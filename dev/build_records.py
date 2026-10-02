@@ -104,7 +104,7 @@ def main():
         visits.append({"date": v["date"], "doctor": v["doctor"], "clinic": v["clinic"],
                        "diagnosis": v["diagnosis"], "findings": v["findings"], "recs": v["recs"], "source": src})
     record = {
-        "generated": "2026-01-20",
+        "generated": "2026-09-01",
         "profile": {"name": P.PATIENT["name_ru"], "birth": P.PATIENT["birth"], "sex": "М",
                     "diagnoses": ["Гиперхолестеринемия (с 2023), без лекарств — питание и нагрузка"],
                     "meds": ["Витамин D3 — зимой, нерегулярно"],
@@ -119,11 +119,11 @@ def main():
         "visits": visits,
         "reminders": [
             {"id": "lipids-2026", "what": "Липидограмма", "why": "Контроль LDL раз в год по рекомендации кардиолога",
-             "due": "2026-01-15", "status": "planned"},
+             "due": "2026-09-15", "status": "planned"},
             {"id": "vitd-winter", "what": "Витамин D (25-OH)", "why": "Зимой стабильно ниже нормы — проверить на фоне D3",
-             "due": "2026-02-01", "status": "planned"},
+             "due": "2026-11-01", "status": "planned"},
             {"id": "tsh-2026", "what": "ТТГ", "why": "Последний раз в 2020, норма — повторять раз в несколько лет",
-             "due": "2026-06-01", "status": "planned"},
+             "due": "2026-12-01", "status": "planned"},
         ],
     }
     (ROOT / "data" / "health-record.json").write_text(

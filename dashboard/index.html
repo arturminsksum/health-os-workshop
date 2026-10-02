@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Карта здоровья</title>
+<script src="chart.umd.min.js"></script>
+<script src="data.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #fff; --border: #e6e9ef; --ink: #1f2937; --muted: #6b7280; --faint: #9ca3af;
+    --green: #16a34a; --amber: #d97706; --red: #dc2626;
+    --green-bg: #ecfdf5; --amber-bg: #fffbeb; --red-bg: #fef2f2; --accent: #2563eb;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); overflow-wrap: anywhere;
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  header { margin-bottom: 8px; }
+  header h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+  header .meta { color: var(--muted); font-size: 15px; margin-top: 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint);
+    margin: 32px 0 12px; font-weight: 700; }
+  h3 { margin: 22px 0 10px; font-size: 18px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 14px 16px; }
+
+  /* статус */
+  .status { display: grid; gap: 10px; }
+  .status .card { border-left: 4px solid var(--accent); }
+  .status .warn { border-left-color: var(--amber); background: var(--amber-bg); }
+  .status .ok { border-left-color: var(--green); background: var(--green-bg); }
+
+  /* анализы */
+  .bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+  .bhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .bname { font-weight: 700; font-size: 17px; }
+  .bfull { color: var(--muted); font-size: 13px; }
+  .bval { font-size: 24px; font-weight: 700; text-align: right; white-space: nowrap; }
+  .bval small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+  .bval.high, .bval.low { color: var(--red); }
+  .bval.ok { color: var(--green); }
+  .bsub { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+  .badge { font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 20px; }
+  .badge.high, .badge.low { color: var(--red); background: var(--red-bg); }
+  .badge.ok { color: var(--green); background: var(--green-bg); }
+  .chart { position: relative; height: 190px; margin-top: 10px; }
+
+  /* визиты */
+  .visit { margin-bottom: 12px; }
+  .visit .vh { font-weight: 700; }
+  .visit .vs { color: var(--muted); font-size: 14px; }
+  .visit p { margin: 8px 0 0; }
+  .visit ul { margin: 6px 0 0; padding-left: 20px; }
+  .visit li { margin: 3px 0; }
+
+  /* напоминания */
+  .rem { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+  .rem .rw { font-weight: 700; }
+  .rem .rwhy { color: var(--muted); font-size: 14px; }
+  .rem .rd { text-align: right; flex: none; font-size: 14px; }
+  .rem.overdue { border-left: 4px solid var(--red); background: var(--red-bg); }
+  .rem.overdue .rd b { color: var(--red); }
+
+  /* профиль */
+  .prof dt { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .prof dt:first-child { margin-top: 0; }
+  .prof dd { margin: 2px 0 0; }
+  .prof ul { margin: 2px 0 0; padding-left: 20px; }
+
+  .empty { color: var(--muted); }
+  footer { margin-top: 36px; color: var(--faint); font-size: 13px; text-align: center; }
+  @media (max-width: 480px) {
+    header h1 { font-size: 22px; }
+    .bval { font-size: 22px; }
+    .rem { flex-direction: column; gap: 4px; }
+    .rem .rd { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="name"></h1>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <h2>Статус</h2>
+  <div class="status" id="status"></div>
+
+  <h2>Анализы</h2>
+  <div id="labs"></div>
+
+  <h2>Визиты к врачам</h2>
+  <div id="visits"></div>
+
+  <h2>Напоминания</h2>
+  <div id="reminders"></div>
+
+  <h2>Профиль</h2>
+  <div class="card prof" id="profile"></div>
+
+  <footer>Учебный проект. Все данные вымышленные.</footer>
+</div>
+
+<script>
+const D = window.HEALTH_DATA;
+const $ = id => document.getElementById(id);
+const FLAG_RU = { high: "выше нормы", low: "ниже нормы", ok: "в норме" };
+const COLOR = { high: "#dc2626", low: "#dc2626", ok: "#16a34a" };
+const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+
+// "2025-01-15" -> "15 января 2025"
+function fmtDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+// дата как дробный год — для оси X с реальными промежутками между анализами
+function fracYear(iso) {
+  const t = new Date(iso + "T00:00:00Z");
+  const start = Date.UTC(t.getUTCFullYear(), 0, 1), end = Date.UTC(t.getUTCFullYear() + 1, 0, 1);
+  return t.getUTCFullYear() + (t - start) / (end - start);
+}
+function ageYears(birthIso, now) {
+  const b = new Date(birthIso + "T00:00:00");
+  let a = now.getFullYear() - b.getFullYear();
+  const had = now.getMonth() > b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() >= b.getDate());
+  return had ? a : a - 1;
+}
+function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+  return many;
+}
+const list = items => items.length ? `<ul>${items.map(i => `<li>${i}</li>`).join("")}</ul>` : `<span class="empty">нет</span>`;
+
+const today = new Date();
+const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+/* ---------- шапка ---------- */
+const p = D.profile;
+const age = ageYears(p.birth, today);
+$("name").textContent = p.name;
+$("meta").textContent = `${age} ${plural(age, "год", "года", "лет")} · данные на ${fmtDate(D.generated)}`;
+
+/* ---------- статус ---------- */
+$("status").innerHTML = D.tldr.map(t =>
+  `<div class="card ${t.level}">${t.text}</div>`).join("");
+
+/* ---------- анализы ---------- */
+// плагин: закрашивает референсный диапазон (low..high) на графике
+const refBand = {
+  id: "refBand",
+  beforeDatasetsDraw(chart, _, opts) {
+    const { ctx, chartArea: a, scales: { y } } = chart;
+    const top = opts.high == null ? a.top : Math.max(a.top, y.getPixelForValue(opts.high));
+    const bottom = opts.low == null ? a.bottom : Math.min(a.bottom, y.getPixelForValue(opts.low));
+    if (bottom <= top) return;
+    ctx.save();
+    ctx.fillStyle = "rgba(22,163,74,.12)";
+    ctx.fillRect(a.left, top, a.right - a.left, bottom - top);
+    ctx.restore();
+  },
+};
+
+function drawChart(canvas, b) {
+  const pts = b.series.map(s => ({ x: fracYear(s.date), y: s.value, date: s.date, lab: s.lab }));
+  const xs = pts.map(q => q.x);
+  const minX = Math.floor(Math.min(...xs)), maxX = Math.max(Math.ceil(Math.max(...xs)), minX + 1);
+  // ось Y должна вмещать и значения, и границы нормы — с запасом
+  const ys = pts.map(q => q.y).concat([b.low, b.high].filter(v => v != null));
+  const lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo || hi || 1) * 0.15;
+  new Chart(canvas, {
+    type: "line",
+    data: { datasets: [{
+      data: pts, borderColor: "#2563eb", backgroundColor: "#2563eb", borderWidth: 2, tension: 0.2,
+      pointRadius: 5, pointHoverRadius: 7,
+      pointBackgroundColor: b.series.map(s => COLOR[s.flag]), pointBorderColor: "#fff", pointBorderWidth: 1.5,
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "nearest", intersect: false },
+      plugins: {
+        legend: { display: false },
+        refBand: { low: b.low, high: b.high },
+        tooltip: { callbacks: {
+          title: it => fmtDate(it[0].raw.date),
+          label: it => `${b.name}: ${it.parsed.y} ${b.unit} (${it.raw.lab})`,
+        } },
+      },
+      scales: {
+        x: { type: "linear", min: minX, max: maxX,
+             ticks: { stepSize: 1, maxTicksLimit: 8, callback: v => Number.isInteger(v) ? v : "" },
+             grid: { color: "#eef1f5" } },
+        y: { suggestedMin: Math.max(0, lo - pad), suggestedMax: hi + pad, grid: { color: "#eef1f5" } },
+      },
+    },
+    plugins: [refBand],
+  });
+}
+
+(function renderLabs() {
+  const groups = [...new Set(D.biomarkers.map(b => b.group))];
+  $("labs").innerHTML = groups.map(g => {
+    const cards = D.biomarkers.filter(b => b.group === g).map(b => {
+      const last = b.series[b.series.length - 1];
+      const n = b.series.length;
+      return `<div class="card">
+        <div class="bhead">
+          <div><div class="bname">${b.name}</div><div class="bfull">${b.fullName}</div></div>
+          <div class="bval ${last.flag}">${last.value}<small>${b.unit}</small></div>
+        </div>
+        <div class="bsub">
+          <span>Норма: ${b.ref} ${b.unit}</span>
+          <span class="badge ${last.flag}">${FLAG_RU[last.flag]}</span>
+        </div>
+        <div class="bsub"><span>Последний: ${fmtDate(last.date)} · ${n} ${plural(n, "замер", "замера", "замеров")}</span></div>
+        <div class="chart"><canvas data-key="${b.key}"></canvas></div>
+      </div>`;
+    }).join("");
+    return `<h3>${g}</h3><div class="bgrid">${cards}</div>`;
+  }).join("");
+  document.querySelectorAll("canvas[data-key]").forEach(c =>
+    drawChart(c, D.biomarkers.find(b => b.key === c.dataset.key)));
+})();
+
+/* ---------- визиты ---------- */
+$("visits").innerHTML = D.visits.length ? [...D.visits].sort((a, b) => b.date.localeCompare(a.date)).map(v => `
+  <div class="card visit">
+    <div class="vh">${v.diagnosis}</div>
+    <div class="vs">${fmtDate(v.date)} · ${v.doctor} · ${v.clinic}</div>
+    <p>${v.findings}</p>
+    <b style="display:block;margin-top:10px">Рекомендации</b>${list(v.recs)}
+  </div>`).join("") : `<div class="empty">Визитов пока нет.</div>`;
+
+/* ---------- напоминания ---------- */
+const DAY = 86400000;
+$("reminders").innerHTML = D.reminders.length ? [...D.reminders].sort((a, b) => a.due.localeCompare(b.due)).map(r => {
+  const overdue = r.due < todayIso;
+  const days = Math.round((new Date(todayIso) - new Date(r.due)) / DAY);
+  const note = overdue ? `просрочено на ${days} ${plural(days, "день", "дня", "дней")}` : "запланировано";
+  return `<div class="card rem ${overdue ? "overdue" : ""}">
+    <div><div class="rw">${r.what}</div><div class="rwhy">${r.why}</div></div>
+    <div class="rd">срок: ${fmtDate(r.due)}<br><b>${note}</b></div>
+  </div>`;
+}).join("") : `<div class="empty">Напоминаний нет.</div>`;
+
+/* ---------- профиль ---------- */
+$("profile").innerHTML = `<dl style="margin:0">
+  <dt>Дата рождения</dt><dd>${fmtDate(p.birth)} (${age} ${plural(age, "год", "года", "лет")}), пол: ${p.sex}</dd>
+  <dt>Диагнозы</dt><dd>${list(p.diagnoses)}</dd>
+  <dt>Препараты</dt><dd>${list(p.meds)}</dd>
+  <dt>Заметки</dt><dd>${list(p.notes)}</dd></dl>`;
+</script>
+</body>
+</html>
