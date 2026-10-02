@@ -61,7 +61,7 @@ LABS = [
     {"date": "2022-02-10", "lab": "pl", "stage": "history", "order": "WA2202104417",
      "values": {"tc": 6.0, "ldl": 3.9, "hdl": 1.16, "tg": 1.6, "glu": 5.4, "fer": 62, "vitd": 17}},
     {"date": "2023-03-08", "lab": "pl", "stage": "history", "order": "WA2303081129",
-     "values": {"tc": 6.6, "ldl": 4.3, "hdl": 1.19, "tg": 1.69, "glu": 5.6, "alt": 38, "ast": 31,
+     "values": {"tc": 6.6, "ldl": 4.3, "hdl": 1.19, "tg": 1.65, "glu": 5.5, "alt": 38, "ast": 31,
                 "vitd": 21}},
     {"date": "2024-06-12", "lab": "pl", "stage": "history", "order": "WA2406120388",
      "values": {"tc": 5.6, "ldl": 3.4, "hdl": 1.27, "tg": 1.35, "glu": 5.3, "alt": 30, "vitd": 41}},
