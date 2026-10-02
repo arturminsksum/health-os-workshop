@@ -83,7 +83,7 @@ def run_agent(prompt, write=False, images=()):
                "--sandbox", "workspace-write" if write else "read-only", "-o", str(out_file)]
         for img in images:
             cmd += ["-i", str(img)]
-        cmd.append(prompt)
+        cmd += ["--", prompt]  # без «--» Codex принимает текст задания за ещё одну картинку
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=AGENT_TIMEOUT,
                            encoding="utf-8")
