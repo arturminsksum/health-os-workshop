@@ -132,13 +132,14 @@ def reminder_loop():
 # ---------- сообщения ----------
 
 def handle_files(chat_id, files):
-    send(chat_id, "Принял, разбираю…")
+    work = Working(chat_id, f"📄 Принял {len(files)} файл(а), читаю документ — секунд 10…")
     try:
         reply = medcard.ingest(files)
         if config.PUBLIC_URL:
             reply += f"\n\nСтраница медкарты: {config.PUBLIC_URL}"
     except Exception as e:
         reply = f"Не получилось разобрать: {e}"
+    work.finish()
     send(chat_id, reply)
 
 
@@ -170,12 +171,36 @@ def handle(msg, albums):
         albums[key]["at"] = time.time()
         return
     if text:
-        call("sendChatAction", chat_id=chat_id, action="typing")
         threading.Thread(target=reply_text, args=(chat_id, text), daemon=True).start()
+
+
+class Working:
+    """Пока модель думает: сразу пишем «смотрю…» и держим «печатает…», потом служебное сообщение убираем."""
+
+    def __init__(self, chat_id, text):
+        self.chat_id, self.done = chat_id, threading.Event()
+        self.msg_id = call("sendMessage", chat_id=chat_id, text=text)["message_id"]
+        threading.Thread(target=self._typing, daemon=True).start()
+
+    def _typing(self):
+        while not self.done.is_set():
+            try:
+                call("sendChatAction", chat_id=self.chat_id, action="typing")
+            except Exception:
+                pass
+            self.done.wait(4)
+
+    def finish(self):
+        self.done.set()
+        try:
+            call("deleteMessage", chat_id=self.chat_id, message_id=self.msg_id)
+        except Exception:
+            pass
 
 
 def reply_text(chat_id, text):
     """Отвечаем в отдельном потоке: пока модель думает, бот принимает следующие сообщения."""
+    work = Working(chat_id, "🔎 Смотрю медкарту…")
     try:
         res = ask.answer(text, chat_id)
         body = to_html(res["text"])
@@ -194,6 +219,8 @@ def reply_text(chat_id, text):
             call("sendMessage", chat_id=chat_id, text=body, parse_mode="HTML")
     except Exception as e:
         send(chat_id, f"Не получилось ответить: {e}")
+    finally:
+        work.finish()
 
 
 def run():
