@@ -207,7 +207,7 @@ def app_screen(rec, codes, title):
     .tab b {{ color:#0d3b66; }}
     </style></head><body>
     <div class="sb"><span>9:41</span><span>●●●● 5G ▮</span></div>
-    <div class="top"><div class="s">‹ Wyniki</div><div class="t">{esc(title)}</div>
+    <div class="top"><div class="s">‹ Wyniki · {esc(P.LAB_PL['short'])}</div><div class="t">{esc(title)}</div>
       <div class="s">{esc(pt['name_pl'])} · pobranie {d_ru(rec['date'])} · zlec. {esc(rec['order'])}</div></div>
     {cards}
     <div class="tab"><b>Wyniki</b><span>Wizyty</span><span>Sklep</span><span>Profil</span></div>
