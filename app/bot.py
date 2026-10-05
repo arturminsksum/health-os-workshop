@@ -30,6 +30,25 @@ def send(chat_id, text):
         call("sendMessage", chat_id=chat_id, text=text[i:i + 4000])
 
 
+def to_html(text):
+    """**жирный** из ответа модели в HTML Telegram; всё остальное экранируем («< 5.2» не ломает разметку)."""
+    import html
+    import re
+    return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", html.escape(text))
+
+
+def send_photo(chat_id, png, caption):
+    boundary = uuid.uuid4().hex
+    parts = [f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode()
+             for k, v in (("chat_id", str(chat_id)), ("caption", caption), ("parse_mode", "HTML"))]
+    parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="photo"; filename="chart.png"\r\n'
+                 f"Content-Type: image/png\r\n\r\n".encode() + png + b"\r\n")
+    parts.append(f"--{boundary}--\r\n".encode())
+    req = urllib.request.Request(f"{API}/sendPhoto", data=b"".join(parts),
+                                 headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    urllib.request.urlopen(req, timeout=120).read()
+
+
 def send_document(chat_id, path, caption):
     boundary = uuid.uuid4().hex
     parts = []
@@ -158,7 +177,21 @@ def handle(msg, albums):
 def reply_text(chat_id, text):
     """Отвечаем в отдельном потоке: пока модель думает, бот принимает следующие сообщения."""
     try:
-        send(chat_id, ask.answer(text, chat_id))
+        res = ask.answer(text, chat_id)
+        body = to_html(res["text"])
+        png = None
+        if res["charts"]:
+            try:
+                import charts
+                png = charts.render(res["charts"])
+            except ImportError:
+                print("графики выключены: нет Pillow (sudo apt install python3-pil)")
+        if png and len(body) <= 1000:
+            send_photo(chat_id, png, body)
+        else:
+            if png:
+                send_photo(chat_id, png, "")
+            call("sendMessage", chat_id=chat_id, text=body, parse_mode="HTML")
     except Exception as e:
         send(chat_id, f"Не получилось ответить: {e}")
 

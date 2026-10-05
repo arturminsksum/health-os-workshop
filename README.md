@@ -84,6 +84,7 @@ python3 run.py
 ```
 git clone https://github.com/<аккаунт>/health-os-workshop.git health-os
 cd health-os
+sudo apt install -y python3-pil   # для картинок-графиков в боте
 cp .env.example .env
 nano .env        # впиши OPENAI_API_KEY, TELEGRAM_BOT_TOKEN, WEB_PASSWORD, PUBLIC_URL
 python3 run.py check

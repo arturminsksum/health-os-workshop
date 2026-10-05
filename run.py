@@ -52,7 +52,14 @@ def main():
         return check()
     if args[:1] == ["ask"]:
         import ask
-        return print(ask.answer(" ".join(args[1:])))
+        res = ask.answer(" ".join(args[1:]))
+        print(res["text"])
+        if res["charts"]:
+            import charts
+            out = Path("chart.png")
+            out.write_bytes(charts.render(res["charts"]))
+            print(f"График: {out.resolve()}")
+        return
     if args[:1] == ["add"]:
         import medcard
         return print(medcard.ingest(args[1:]))

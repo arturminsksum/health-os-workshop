@@ -9,7 +9,13 @@ SYSTEM = ("Ты — внимательный помощник по личной 
           "с цифрами и датами из карты. Сравнивай с нормой и с прошлыми значениями. "
           "Не ставь диагнозов и не назначай лечение; если вопрос требует врача — так и скажи. "
           "Если в карте нет данных для ответа — честно скажи, чего не хватает. "
-          "Ответ уходит в Telegram: до 8 строк, обычный текст без звёздочек, решёток и другой разметки.")
+          "Ответ уходит в Telegram и читается с телефона: 2–5 коротких строк, без цепочек цифр через стрелки "
+          "— историю значений покажет график. Главные цифры выдели **так**, другой разметки не используй. "
+          "В поле charts перечисли ключи показателей (key из медкарты), график которых поможет ответу; "
+          "если вопрос не про анализы — оставь пустым.")
+
+SCHEMA = {"type": "object", "additionalProperties": False, "required": ["text", "charts"],
+          "properties": {"text": {"type": "string"}, "charts": {"type": "array", "items": {"type": "string"}}}}
 
 HISTORY = {}  # chat_id -> последние реплики, чтобы бот понимал «а что было до этого?»
 
@@ -29,7 +35,9 @@ def answer(question, chat_id=None):
     prefix = "Переписка до этого:\n" + dialog if dialog else ""  # без «\n» внутри f-строки: Python 3.10 на старых Ubuntu
     prompt = (f"Медкарта и данные часов (JSON):\n{json.dumps(context, ensure_ascii=False)}\n\n"
               f"{prefix}Вопрос: {question}")
-    reply = llm.ask(prompt, system=SYSTEM)
+    res = llm.ask(prompt, system=SYSTEM, schema=SCHEMA)
     if chat_id is not None:
-        HISTORY[chat_id] = (past + [("Пользователь", question), ("Ты", reply)])[-6:]
-    return reply
+        HISTORY[chat_id] = (past + [("Пользователь", question), ("Ты", res["text"])])[-6:]
+    by_key = {b["key"]: b for b in context["medcard"]["biomarkers"]}
+    res["charts"] = [by_key[k] for k in res["charts"] if k in by_key][:4]
+    return res
