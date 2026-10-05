@@ -152,10 +152,15 @@ def handle(msg, albums):
         return
     if text:
         call("sendChatAction", chat_id=chat_id, action="typing")
-        try:
-            send(chat_id, ask.answer(text, chat_id))
-        except Exception as e:
-            send(chat_id, f"Не получилось ответить: {e}")
+        threading.Thread(target=reply_text, args=(chat_id, text), daemon=True).start()
+
+
+def reply_text(chat_id, text):
+    """Отвечаем в отдельном потоке: пока модель думает, бот принимает следующие сообщения."""
+    try:
+        send(chat_id, ask.answer(text, chat_id))
+    except Exception as e:
+        send(chat_id, f"Не получилось ответить: {e}")
 
 
 def run():
