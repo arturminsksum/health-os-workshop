@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFilter
 import patient as P
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "samples"
+OUT = ROOT / "dev" / "generated"
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 TMP = Path(tempfile.mkdtemp(prefix="howk-"))
 

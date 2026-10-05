@@ -22,31 +22,11 @@ LAB_PL = {"name": "Laboratorium Diagnostyczne WISŁA", "short": "WISŁA Lab",
 LAB_EN = {"name": "Northbridge Clinical Laboratories", "addr": "12 Example Road, London",
           "phone": "+44 0000 000000"}
 
-# Маркеры: код -> подписи на трёх языках, единицы (СИ-канон и mg/dl там, где есть пересчёт), референсы.
-MARKERS = {
-    "tc":   {"ru": "Холестерин общий", "pl": "Cholesterol całkowity", "en": "Total cholesterol",
-             "si": "ммоль/л", "ref_si": "< 5.2", "mgdl_k": 38.67, "ref_mgdl": "< 200", "hi": 5.2},
-    "ldl":  {"ru": "Холестерин ЛПНП", "pl": "Cholesterol LDL", "en": "LDL cholesterol",
-             "si": "ммоль/л", "ref_si": "< 3.0", "mgdl_k": 38.67, "ref_mgdl": "< 115", "hi": 3.0},
-    "hdl":  {"ru": "Холестерин ЛПВП", "pl": "Cholesterol HDL", "en": "HDL cholesterol",
-             "si": "ммоль/л", "ref_si": "> 1.0", "mgdl_k": 38.67, "ref_mgdl": "> 40", "lo": 1.0},
-    "tg":   {"ru": "Триглицериды", "pl": "Triglicerydy", "en": "Triglycerides",
-             "si": "ммоль/л", "ref_si": "< 1.7", "mgdl_k": 88.57, "ref_mgdl": "< 150", "hi": 1.7},
-    "glu":  {"ru": "Глюкоза", "pl": "Glukoza", "en": "Glucose",
-             "si": "ммоль/л", "ref_si": "3.9–5.6", "mgdl_k": 18.0, "ref_mgdl": "70–99", "lo": 3.9, "hi": 5.6},
-    "alt":  {"ru": "АЛТ", "pl": "ALT", "en": "ALT", "si": "Ед/л", "si_pl": "U/l", "ref_si": "< 41", "hi": 41},
-    "ast":  {"ru": "АСТ", "pl": "AST", "en": "AST", "si": "Ед/л", "si_pl": "U/l", "ref_si": "< 40", "hi": 40},
-    "fer":  {"ru": "Ферритин", "pl": "Ferrytyna", "en": "Ferritin",
-             "si": "нг/мл", "si_pl": "ng/ml", "ref_si": "30–400", "lo": 30, "hi": 400},
-    "vitd": {"ru": "Витамин D (25-OH)", "pl": "Witamina D3 (25-OH)", "en": "Vitamin D (25-OH)",
-             "si": "нг/мл", "si_pl": "ng/ml", "ref_si": "30–100", "lo": 30, "hi": 100},
-    "tsh":  {"ru": "ТТГ", "pl": "TSH", "en": "TSH", "si": "мкМЕ/мл", "si_pl": "µIU/ml",
-             "si_en": "mIU/L", "ref_si": "0.4–4.0", "lo": 0.4, "hi": 4.0},
-    "ft4":  {"ru": "Т4 свободный", "pl": "FT4", "en": "Free T4", "si": "пмоль/л", "si_en": "pmol/L",
-             "ref_si": "12–22", "lo": 12, "hi": 22},
-    "hb":   {"ru": "Гемоглобин", "pl": "Hemoglobina", "en": "Haemoglobin", "si": "г/л", "si_pl": "g/l",
-             "si_en": "g/L", "ref_si": "130–170", "lo": 130, "hi": 170},
-}
+# Справочник показателей живёт в app/markers.py — генератор берёт его оттуда, чтобы не разъезжались.
+import sys
+from pathlib import Path as _P
+sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "app"))
+from markers import MARKERS  # noqa: E402
 
 # Значения храним в СИ-каноне; польская лаборатория печатает липиды/глюкозу в mg/dl (пересчёт при рендере).
 # lang: ru / pl / en; stage: history — уже разобрано в карте, live — прилетает на уроке.

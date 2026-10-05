@@ -72,6 +72,19 @@
   .prof dd { margin: 2px 0 0; }
   .prof ul { margin: 2px 0 0; padding-left: 20px; }
 
+  /* сон и восстановление */
+  .sum { font-size: 17px; margin: 0 0 4px; }
+  .sum b.ok { color: var(--green); } .sum b.out { color: var(--amber); }
+  .sumline { margin: 6px 0 0; font-size: 15px; }
+  .sumline .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; background: var(--green); }
+  .sumline .dot.out { background: var(--amber); }
+  .hint { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .legend i { display: inline-block; width: 14px; height: 9px; background: rgba(22,163,74,.2); border-radius: 2px; margin-right: 6px; }
+  .sgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 14px; margin-top: 14px; }
+  @media (min-width: 700px) { .sgrid .bfull { min-height: 2.8em; } }
+  .chart.sm { height: 170px; }
+
   .empty { color: var(--muted); }
   footer { margin-top: 36px; color: var(--faint); font-size: 13px; text-align: center; }
   @media (max-width: 480px) {
@@ -94,6 +107,13 @@
 
   <h2>Анализы</h2>
   <div id="labs"></div>
+
+  <div id="sleepSection" hidden>
+    <h2>Сон и восстановление</h2>
+    <div class="card" id="sleepSummary"></div>
+    <div class="sgrid" id="sleepCharts"></div>
+    <div class="legend"><span><i></i>зелёная полоса — ваша обычная норма за последние 90 дней</span></div>
+  </div>
 
   <h2>Визиты к врачам</h2>
   <div id="visits"></div>
@@ -227,6 +247,73 @@ function drawChart(canvas, b) {
   }).join("");
   document.querySelectorAll("canvas[data-key]").forEach(c =>
     drawChart(c, D.biomarkers.find(b => b.key === c.dataset.key)));
+})();
+
+/* ---------- сон и восстановление ---------- */
+(function renderSleep() {
+  const G = D.garmin;
+  if (!G || !G.days || G.days.length < 14) return;
+  $("sleepSection").hidden = false;
+  const days = G.days, last7 = days.slice(-7);
+  const avg = k => last7.reduce((s, r) => s + r[k], 0) / last7.length;
+  const f1 = v => v.toFixed(1).replace(".", ",");
+  const f0 = v => String(Math.round(v));
+  const rows = [
+    { k: "sleepHours", label: "Сон", unit: "ч", fmt: f1, hint: null },
+    { k: "restingHR", label: "Пульс в покое", unit: "уд/мин", fmt: f0, hint: null },
+    { k: "hrvMs", label: "Восстановление (HRV)", unit: "мс", fmt: f0, hint: "вариабельность пульса — чем выше, тем лучше восстановление" },
+  ];
+  const lines = rows.map(r => {
+    const n = G.norms[r.k], a = avg(r.k);
+    const lo = r.fmt(n.p25), hi = r.fmt(n.p75);
+    const av = Number(r.fmt(a).replace(",", ".")), nl = Number(r.fmt(n.p25).replace(",", ".")), nh = Number(r.fmt(n.p75).replace(",", "."));
+    const inside = av >= nl && av <= nh;
+    const cmp = inside ? "в вашей обычной норме" : (av < nl ? "ниже вашей обычной нормы" : "выше вашей обычной нормы");
+    return `<p class="sumline"><span class="dot ${inside ? "" : "out"}"></span>${r.label}: <b>${r.fmt(a)} ${r.unit}</b> в среднем — ${cmp} ${lo}–${hi}</p>` +
+      (r.hint ? `<div class="hint">${r.hint}</div>` : "");
+  }).join("");
+  $("sleepSummary").innerHTML = `<p class="sum"><b>Последние 7 дней</b> по сравнению с вашей обычной нормой</p>${lines}`;
+
+  const charts = [
+    { k: "sleepHours", title: "Сон, часов", color: "#2563eb", step: 1 },
+    { k: "restingHR", title: "Пульс в покое, уд/мин", color: "#dc2626", step: 2 },
+    { k: "hrvMs", title: "HRV, мс", color: "#7c3aed", step: 5, note: "вариабельность пульса — чем выше, тем лучше восстановление" },
+  ];
+  $("sleepCharts").innerHTML = charts.map(c => `<div class="card">
+    <div class="bname">${c.title}</div>
+    <div class="bfull">${c.note || "за 90 дней, по утрам"}</div>
+    <div class="chart sm"><canvas data-gk="${c.k}"></canvas></div></div>`).join("");
+  document.querySelectorAll("canvas[data-gk]").forEach(cv => {
+    const c = charts.find(x => x.k === cv.dataset.gk), n = G.norms[c.k];
+    const pts = days.map(r => ({ x: r.date, y: r[c.k] }));
+    const vals = pts.map(q => q.y).concat([n.p25, n.p75]);
+    new Chart(cv, {
+      type: "line",
+      data: { labels: days.map(r => r.date), datasets: [{
+        data: pts.map(q => q.y), borderColor: c.color, borderWidth: 1.8, tension: 0.25, pointRadius: 0, pointHoverRadius: 5,
+      }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "nearest", intersect: false, axis: "x" },
+        plugins: {
+          legend: { display: false },
+          refBand: { low: n.p25, high: n.p75 },
+          tooltip: { callbacks: {
+            title: it => fmtDate(days[it[0].dataIndex].date),
+            label: it => `${c.title.split(",")[0]}: ${it.parsed.y}`,
+          } },
+        },
+        scales: {
+          x: { ticks: { maxTicksLimit: 5, maxRotation: 0, autoSkip: true,
+                 callback: function (v) { const d = this.getLabelForValue(v); const [, m, dd] = d.split("-").map(Number); return `${dd} ${MONTHS[m - 1].slice(0, 3)}`; } },
+               grid: { display: false } },
+          y: { suggestedMin: Math.floor(Math.min(...vals) - 1), suggestedMax: Math.ceil(Math.max(...vals) + 1),
+               grid: { color: "#eef1f5" } },
+        },
+      },
+      plugins: [refBand],
+    });
+  });
 })();
 
 /* ---------- визиты ---------- */

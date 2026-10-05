@@ -4,7 +4,8 @@
 Запуск из любой папки:  python3 dashboard/build.py
 
 Результат:
-  dashboard/data.js               - данные для index.html (window.HEALTH_DATA = {...};)
+  dashboard/data.js               - данные для index.html (window.HEALTH_DATA = {...};),
+                                    включая window.HEALTH_DATA.garmin, если есть data/garmin.json
   dashboard/health-dashboard.html - один самодостаточный файл: Chart.js и данные внутри,
                                     его можно отправить документом в Telegram и открыть офлайн.
 """
@@ -14,6 +15,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 RECORD = ROOT / "data" / "health-record.json"
+GARMIN = ROOT / "data" / "garmin.json"  # необязательно: данные часов (dev/generate_garmin.py)
 
 
 def read(path: Path) -> str:
@@ -22,6 +24,8 @@ def read(path: Path) -> str:
 
 def main() -> None:
     record = json.loads(read(RECORD))
+    if GARMIN.exists():
+        record["garmin"] = json.loads(read(GARMIN))
 
     # '</' экранируем, чтобы данные не могли закрыть тег <script> при вставке в html
     payload = json.dumps(record, ensure_ascii=False).replace("</", "<\\/")
@@ -38,7 +42,8 @@ def main() -> None:
 
     print(
         f"Готово: {len(record['biomarkers'])} показателей, {len(record['visits'])} визитов, "
-        f"{len(record['reminders'])} напоминаний -> {out.name} ({out.stat().st_size // 1024} КБ)"
+        f"{len(record['reminders'])} напоминаний, "
+        f"{len(record['garmin']['days']) if 'garmin' in record else 0} дней часов -> {out.name} ({out.stat().st_size // 1024} КБ)"
     )
 
 
