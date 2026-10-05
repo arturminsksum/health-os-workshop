@@ -11,8 +11,8 @@ from PIL import Image, ImageDraw, ImageFont
 FONT_PATHS = ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"]
 BOLD_PATHS = ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/System/Library/Fonts/Supplemental/Arial Bold.ttf"]
 COLOR = {"high": (214, 69, 69), "low": (224, 138, 30), "ok": (46, 158, 91)}
-W, H = 1000, 460
-PAD_L, PAD_R, PAD_T, PAD_B = 90, 40, 110, 60
+W, H = 1000, 520
+PAD_L, PAD_R, PAD_T, PAD_B = 110, 50, 140, 75
 
 
 def _font(paths, size):
@@ -30,12 +30,12 @@ def _t(d):
 def _panel(b):
     img = Image.new("RGB", (W, H), "white")
     g = ImageDraw.Draw(img)
-    f, fb, fs = _font(FONT_PATHS, 22), _font(BOLD_PATHS, 30), _font(FONT_PATHS, 19)
+    f, fb, fs = _font(FONT_PATHS, 32), _font(BOLD_PATHS, 44), _font(FONT_PATHS, 28)
     s = b["series"]
     last = s[-1]
     g.text((PAD_L, 22), b["name"], font=fb, fill=(20, 20, 20))
     status = {"high": "выше нормы", "low": "ниже нормы", "ok": "в норме"}[last["flag"]]
-    g.text((PAD_L, 64), f"сейчас {last['value']:g} {b['unit']} — {status} · норма {b['ref']}",
+    g.text((PAD_L, 80), f"сейчас {last['value']:g} {b['unit']} — {status} · норма {b['ref']}",
            font=f, fill=COLOR[last["flag"]])
     xs, ys = [_t(p["date"]) for p in s], [p["value"] for p in s]
     lo, hi = b.get("low"), b.get("high")
@@ -52,15 +52,15 @@ def _panel(b):
     for i in range(5):  # сетка и подписи значений
         v = y_min + (y_max - y_min) * i / 4
         g.line([PAD_L, py(v), W - PAD_R, py(v)], fill=(235, 235, 235))
-        g.text((10, py(v) - 11), f"{v:.1f}" if span < 20 else f"{v:.0f}", font=fs, fill=(130, 130, 130))
+        g.text((10, py(v) - 16), f"{v:.1f}" if span < 20 else f"{v:.0f}", font=fs, fill=(130, 130, 130))
     for year in range(int(x_min) + 1, int(x_max) + 1):
-        g.text((px(year) - 22, H - PAD_B + 14), str(year), font=fs, fill=(130, 130, 130))
+        g.text((px(year) - 32, H - PAD_B + 18), str(year), font=fs, fill=(130, 130, 130))
     pts = [(px(x), py(y)) for x, y in zip(xs, ys)]
     if len(pts) > 1:
-        g.line(pts, fill=(59, 110, 220), width=4)
+        g.line(pts, fill=(59, 110, 220), width=5)
     for (x, y), p in zip(pts, s):
-        g.ellipse([x - 9, y - 9, x + 9, y + 9], fill=COLOR[p["flag"]], outline="white", width=2)
-        g.text((x - 18, y - 38), f"{p['value']:g}", font=fs, fill=(60, 60, 60))
+        g.ellipse([x - 12, y - 12, x + 12, y + 12], fill=COLOR[p["flag"]], outline="white", width=2)
+        g.text((x - 24, y - 50), f"{p['value']:g}", font=fs, fill=(60, 60, 60))
     return img
 
 
