@@ -37,7 +37,8 @@ systemctl daemon-reload
 for n in $(seq 1 "$USERS"); do
   u="user$n"
   port=$((8600 + n))
-  pw="$(python3 -c 'import secrets,string;a=string.ascii_lowercase+string.digits;print("".join(secrets.choice(a) for _ in range(10)))')"
+  # пароль легко продиктовать: слово + две цифры (pulse47, vitamin23)
+  pw="$(python3 -c 'import secrets;w=["pulse","vitamin","heart","sleep","iron","sugar","lipid","doctor","health","energy","tonus","oxygen"];print(secrets.choice(w)+str(secrets.randbelow(90)+10))')"
   id "$u" >/dev/null 2>&1 || useradd -m -s /bin/bash "$u"
   echo "$u:$pw" | chpasswd
   chmod 700 "/home/$u"
@@ -54,7 +55,7 @@ REMIND_DAYS_AHEAD=14
 ENV
   chown "$u:" "/home/$u/health-os/.env"; chmod 600 "/home/$u/health-os/.env"
   systemctl enable -q --now "healthos-web@$u"
-  printf 'Health OS — карточка участника\nВход на сервер:  ssh %s@%s\nПароль:          %s\nСтраница:        http://%s:%s  (логин любой, пароль тот же)\n\n' \
-    "$u" "$IP" "$pw" "$IP" "$port" >> /root/workshop-cards.txt
+  printf 'Health OS — карточка участника %s\nСтраница медкарты:  http://%s:%s\nПароль:             %s\nВход на сервер (скопируй в терминал):  ssh %s@%s\n\n' \
+    "$n" "$IP" "$port" "$pw" "$u" "$IP" >> /root/workshop-cards.txt
 done
 echo "Готово: $USERS участников, карточки в /root/workshop-cards.txt"
