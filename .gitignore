@@ -4,3 +4,7 @@ dev/generated/
 .env
 data/.bot-owner
 inbox/
+dashboard/data.js
+dashboard/health-dashboard.html
+chart.png
+health-os.log
