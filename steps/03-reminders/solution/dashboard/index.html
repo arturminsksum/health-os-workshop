@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Health OS — личная карта здоровья</title>
+<script src="data.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #fff; --border: #e6e9ef; --ink: #1f2937; --muted: #6b7280; --faint: #9ca3af;
+    --green: #16a34a; --amber: #d97706; --red: #dc2626;
+    --green-bg: #ecfdf5; --amber-bg: #fffbeb; --red-bg: #fef2f2; --accent: #2563eb; --accent-bg: #eff4ff;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); overflow-wrap: anywhere; overflow-x: hidden;
+    font: 16.5px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+
+  /* оболочка: боковое меню + контент */
+  .app { display: flex; min-height: 100vh; align-items: flex-start; }
+  .sidebar { width: 244px; flex: none; background: var(--card); border-right: 1px solid var(--border);
+    padding: 20px 12px 28px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { padding: 4px 10px 8px; }
+  .brand .bt { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+  .brand .bt span { color: var(--accent); }
+  .brand .bs { font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+  .navgrp { margin-top: 16px; }
+  .navgrp .gt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); padding: 0 10px 6px; font-weight: 700; }
+  .navitem { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--ink);
+    font-size: 15.5px; font-weight: 500; text-decoration: none; margin-bottom: 1px; }
+  .navitem:hover { background: #f3f4f6; }
+  .navitem.active { background: var(--accent-bg); color: var(--accent); font-weight: 650; }
+  .ni-ic { width: 20px; text-align: center; font-size: 15px; flex: none; }
+  .ni-tx { flex: 1; min-width: 0; }
+  .ni-b { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 20px; color: var(--muted); background: #f1f3f5; }
+  .ni-b.red { color: #fff; background: var(--red); } .ni-b.amber { color: #fff; background: var(--amber); }
+  .sidefoot { margin: 22px 10px 0; font-size: 11.5px; color: var(--faint); line-height: 1.5; }
+  .main { flex: 1; min-width: 0; }
+  .content { max-width: 940px; margin: 0 auto; padding: 32px 30px 72px; }
+  .module { display: none; }
+  .module.active { display: block; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  .mtitle { font-size: 28px; margin: 0 0 5px; letter-spacing: -.02em; font-weight: 700; }
+  .mdesc { color: var(--muted); font-size: 15.5px; margin: 0 0 22px; }
+  h2.section { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin: 30px 0 14px; font-weight: 600; }
+  h3.gname { margin: 28px 0 10px; font-size: 18px; }
+  h3.gname:first-child { margin-top: 4px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 15px 17px; }
+  .empty { color: var(--muted); }
+  .val.ok { color: var(--green); } .val.high, .val.low { color: var(--red); }
+
+  /* обзор: шапка, плитки, статусы */
+  .hero { display: flex; gap: 16px; align-items: center; background: linear-gradient(120deg, #2563eb, #4f46e5);
+    color: #fff; border-radius: 16px; padding: 20px 22px; margin-bottom: 8px; box-shadow: 0 6px 20px rgba(37,99,235,.22); }
+  .avatar { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,.2); display: flex;
+    align-items: center; justify-content: center; font-size: 22px; font-weight: 700; flex: none; }
+  .hero h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; line-height: 1.2; }
+  .hero .hm { font-size: 14.5px; opacity: .88; margin-top: 4px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .tile { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px;
+    box-shadow: var(--shadow); border-top: 4px solid var(--faint); text-decoration: none; color: var(--ink); display: block; }
+  .tile.green { border-top-color: var(--green); } .tile.amber { border-top-color: var(--amber); } .tile.red { border-top-color: var(--red); }
+  .tile .tn { font-size: 13.5px; color: var(--muted); font-weight: 600; }
+  .tile .tv { font-size: 27px; font-weight: 750; margin-top: 3px; letter-spacing: -.02em; white-space: nowrap; }
+  .tile .tv small { font-size: 12.5px; font-weight: 500; color: var(--faint); margin-left: 3px; letter-spacing: 0; }
+  .tile.green .tv { color: var(--green); } .tile.amber .tv { color: var(--amber); } .tile.red .tv { color: var(--red); }
+  .tile .tc { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .tldr { display: grid; gap: 10px; }
+  .tldr .row { border-radius: 10px; font-size: 15.5px; min-width: 0;
+    border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); border-left: 4px solid var(--accent);
+    transition: box-shadow .15s ease; }
+  .tldr .row.warn { border-left-color: var(--amber); } .tldr .row.ok { border-left-color: var(--green); }
+  .tldr .rhead { display: flex; gap: 11px; padding: 12px 14px; align-items: flex-start; }
+  .tldr .rhead .rtext { flex: 1; min-width: 0; }
+  .tldr .row.exp .rhead { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .tldr .row.exp:hover { box-shadow: 0 2px 4px rgba(16,24,40,.08), 0 4px 14px rgba(16,24,40,.10); }
+  .tldr .row.exp:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tldr .chev { flex: none; color: var(--faint); font-size: 16px; line-height: 1.55; width: 16px; text-align: center; }
+  .tldr .row.exp:hover .chev, .tldr .row.open .chev { color: var(--accent); }
+  /* раскрытие: плавно через grid-template-rows 0fr -> 1fr */
+  .rbody { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
+  .row.open .rbody { grid-template-rows: 1fr; }
+  .rbody > .rin { overflow: hidden; min-height: 0; min-width: 0; visibility: hidden; transition: visibility 0s linear .25s; }
+  .row.open .rbody > .rin { visibility: visible; transition-delay: 0s; }
+  .rpad { padding: 2px 14px 14px; display: grid; gap: 16px; min-width: 0; }
+  .mini { min-width: 0; }
+  .mini-h { font-size: 13.5px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .mini-h b { color: var(--ink); font-weight: 700; }
+  .mini .chartbox { height: 140px; margin-top: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 12.5px; line-height: 1.3; padding: 2px 9px; border-radius: 20px; border: 1px solid var(--border);
+    background: #f3f4f6; color: var(--muted); white-space: nowrap; }
+  .chip b { font-weight: 700; }
+  .chip.ok { background: var(--green-bg); border-color: #bbf7d0; color: var(--green); }
+  .chip.high { background: var(--red-bg); border-color: #fecaca; color: var(--red); }
+  .chip.low { background: var(--amber-bg); border-color: #fde68a; color: var(--amber); }
+  .golink { display: inline-block; margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+  .golink:hover { text-decoration: underline; }
+
+  /* напоминания: карточки со сроком; раскрываются так же, как строки статуса */
+  .tldr .row.rem { border-left-color: var(--faint); }
+  .tldr .row.rem.over { border-left-color: var(--red); background: var(--red-bg); border-color: #fecaca; }
+  .tldr .row.rem.soon { border-left-color: var(--amber); }
+  .rem .rwhat { display: block; font-size: 17.5px; font-weight: 700; line-height: 1.3; }
+  .rem .rwhy { display: block; font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+  .rem .rdue { flex: none; text-align: right; font-size: 13.5px; color: var(--muted); }
+  .rem .rst { display: block; font-size: 14.5px; font-weight: 700; margin-top: 2px; color: var(--muted); }
+  .rem.over .rst { color: var(--red); } .rem.soon .rst { color: var(--amber); }
+  .rem .last { font-size: 13.5px; color: var(--muted); margin-top: 6px; } .rem .last b { color: var(--ink); }
+  .rem .recl { display: block; margin-top: 0; }
+  .rdone { margin-top: 22px; }
+  .rdone > summary { cursor: pointer; color: var(--muted); font-weight: 600; font-size: 15px; padding: 4px 0; }
+  .rdone .drow { display: flex; gap: 12px; justify-content: space-between; margin-top: 8px; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid var(--border); border-left: 4px solid var(--faint); background: #f9fafb; color: var(--faint); }
+  .rdone .drow b { color: var(--muted); font-weight: 600; } .rdone .drow small { display: block; font-size: 13px; }
+  .rdone .drow .dd { flex: none; text-align: right; font-size: 13px; }
+  .navmore { margin-top: 12px; }
+
+  /* таблицы (анализы, сон) */
+  .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; font-size: 15px; table-layout: fixed; }
+  .tbl.labs th:nth-child(1) { width: 27%; } .tbl.labs th:nth-child(2) { width: 19%; } .tbl.labs th:nth-child(3) { width: 14%; }
+  .tbl.labs th:nth-child(4) { width: 20%; }
+  .tbl th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint);
+    font-weight: 600; padding: 10px 14px; background: #fafbfc; border-bottom: 1px solid var(--border); }
+  .tbl td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: baseline; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl .num { text-align: right; white-space: nowrap; }
+  .tbl .val { font-weight: 700; white-space: nowrap; }
+  .tbl .val small { font-weight: 500; color: var(--muted); font-size: 12.5px; margin-left: 3px; }
+  .tbl .nm b { display: block; }
+  .tbl .nm span, .tbl .dyn { color: var(--muted); font-size: 13px; }
+  .tbl .dyn { white-space: nowrap; }
+
+
+  /* анализы: карточки показателей с графиками */
+  .lgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .bcard { background: var(--card); border: 1px solid var(--border); border-left: 5px solid var(--faint); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 14px 16px 12px; min-width: 0; }
+  .bcard { scroll-margin-top: 84px; transition: outline-color .4s ease, box-shadow .4s ease; outline: 3px solid transparent; outline-offset: 2px; }
+  .bcard.flash, .visit.flash { outline-color: var(--accent); box-shadow: 0 0 0 4px rgba(37,99,235,.15); }
+  .bcard.st-ok { border-left-color: #16a34a; } .bcard.st-high { border-left-color: #dc2626; } .bcard.st-low { border-left-color: #ea8a0c; }
+  .bhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .bhead .bl { min-width: 0; }
+  .bname { font-size: 20px; font-weight: 750; letter-spacing: -.01em; line-height: 1.2; }
+  .bfull { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .bhead .br { text-align: right; flex: none; }
+  .bval { font-size: 26px; font-weight: 750; letter-spacing: -.02em; line-height: 1.1; white-space: nowrap; }
+  .bval small { font-size: 13px; font-weight: 500; margin-left: 3px; letter-spacing: 0; }
+  .blab { font-size: 12.5px; font-weight: 600; margin-top: 3px; }
+  .st-ok .bval, .st-ok .blab { color: #16a34a; } .st-high .bval, .st-high .blab { color: #dc2626; } .st-low .bval, .st-low .blab { color: #ea8a0c; }
+  .binfo { font-size: 13.5px; color: var(--muted); margin-top: 8px; line-height: 1.45; }
+  .chartbox { position: relative; height: 200px; margin-top: 8px; }
+  .chartbox canvas { display: block; }
+
+  /* визиты */
+  .visit { margin-bottom: 12px; border-left: 4px solid var(--accent); scroll-margin-top: 84px; outline: 3px solid transparent; outline-offset: 2px;
+    transition: outline-color .4s ease, box-shadow .4s ease; }
+  .visit .vh { font-weight: 700; font-size: 17px; }
+  .visit .vs { color: var(--muted); font-size: 14px; }
+  .visit p { margin: 8px 0 0; }
+  .visit ul { margin: 6px 0 0; padding-left: 20px; } .visit li { margin: 3px 0; }
+  .visit .rh { display: block; margin-top: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+
+  /* профиль */
+  .profile { padding: 18px 20px; }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px 26px; }
+  .lbl { font-size: 12px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+  .pv { font-size: 16.5px; margin-top: 2px; }
+  .psections { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px 26px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .psec ul { margin: 6px 0 0; padding-left: 18px; } .psec li { margin: 3px 0; font-size: 15px; }
+  footer { margin-top: 40px; color: var(--faint); font-size: 12.5px; }
+
+  @media (max-width: 759px) { .lgrid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 1000px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 759px) {
+    .app { flex-direction: column; align-items: stretch; }
+    .sidebar { width: 100%; height: auto; z-index: 20; border-right: none; border-bottom: 1px solid var(--border); padding: 10px 0 8px; overflow: visible; }
+    .brand { padding: 0 14px 6px; display: flex; align-items: baseline; gap: 10px; }
+    .brand .bs, .sidefoot, .navgrp .gt { display: none; }
+    .navgrp { margin: 0; display: flex; gap: 6px; overflow-x: auto; padding: 2px 14px 4px; scrollbar-width: none; }
+    .navgrp::-webkit-scrollbar { display: none; }
+    .navitem { flex: none; white-space: nowrap; font-size: 14px; padding: 7px 11px; background: #f3f4f6; border-radius: 20px; margin: 0; }
+    .navitem.active { background: var(--accent-bg); }
+    .content { padding: 20px 14px 56px; }
+    .mtitle { font-size: 23px; }
+    .hero { padding: 16px; gap: 12px; } .hero h1 { font-size: 20px; } .avatar { width: 46px; height: 46px; font-size: 18px; }
+    .tile .tv { font-size: 23px; }
+    .tldr .row.rem .rhead { flex-wrap: wrap; }
+    .rem .rtext { flex-basis: calc(100% - 40px); }
+    .rem .rdue { order: 3; flex-basis: 100%; text-align: left; }
+    .rdone .drow { flex-direction: column; gap: 2px; } .rdone .drow .dd { text-align: left; }
+    /* таблицы на телефоне: каждая строка — маленькая карточка, подписи берутся из data-l */
+    .tbl thead { display: none; }
+    .tbl, .tbl tbody { display: block; }
+    .tbl tr { display: grid; grid-template-columns: 1fr auto; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    .tbl tr:last-child { border-bottom: none; }
+    .tbl td { border: none; padding: 1px 0; }
+    .tbl td[data-l]::before { content: attr(data-l) ": "; color: var(--faint); font-size: 12.5px; }
+    .tbl td.full { grid-column: 1 / -1; font-size: 13px; }
+    .tbl.days tr { grid-template-columns: repeat(2, 1fr); }
+    .tbl.days td:first-child { grid-column: 1 / -1; font-weight: 700; }
+    .tbl .num { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="bt">Health <span>OS</span></div><div class="bs">личная карта здоровья</div></div>
+    <nav id="nav"></nav>
+    <div class="sidefoot">Учебный проект.<br>Все данные вымышленные.</div>
+  </aside>
+  <main class="main"><div class="content">
+
+    <section class="module" id="m-overview">
+      <div class="hero"><div class="avatar" id="avatar"></div><div><h1 id="name"></h1><div class="hm" id="meta"></div></div></div>
+      <h2 class="section">Ключевые цифры</h2>
+      <div class="tiles" id="tiles"></div>
+      <h2 class="section">Статус: на что смотреть</h2>
+      <div class="tldr" id="tldr"></div>
+      <div id="remsOverview" hidden>
+        <h2 class="section">Ближайшие напоминания</h2>
+        <div class="tldr" id="remsNear"></div>
+        <a class="golink navmore" href="#reminders">Все напоминания →</a>
+      </div>
+    </section>
+
+    <section class="module" id="m-analyses">
+      <h1 class="mtitle">Анализы</h1>
+      <div class="mdesc">Последние значения по группам и как они менялись. Красным — вне нормы.</div>
+      <div id="labs"></div>
+    </section>
+
+    <section class="module" id="m-sleep">
+      <h1 class="mtitle">Сон и пульс</h1>
+      <div class="mdesc">Данные часов. Сверху: последние 7 дней против вашей обычной нормы.</div>
+      <div class="tiles" id="sleepTiles"></div>
+      <h2 class="section">По дням, последние 7</h2>
+      <div id="sleepDays"></div>
+    </section>
+
+    <section class="module" id="m-visits">
+      <h1 class="mtitle">Визиты к врачам</h1>
+      <div class="mdesc">Новые сверху: диагноз, находки и рекомендации.</div>
+      <div id="visits"></div>
+    </section>
+
+    <section class="module" id="m-reminders">
+      <h1 class="mtitle">Напоминания</h1>
+      <div class="mdesc">Что и до какого числа пересдать, что просрочено и кто это рекомендовал.</div>
+      <div class="tldr" id="remsList"></div>
+      <div id="remsDone"></div>
+    </section>
+
+    <section class="module" id="m-profile">
+      <h1 class="mtitle">Профиль</h1>
+      <div class="mdesc">Контекст, с которым читаются все цифры.</div>
+      <div class="card profile" id="profile"></div>
+    </section>
+
+    <footer>Учебный проект. Все данные вымышленные.</footer>
+  </div></main>
+</div>
+
+<script src="chart.umd.min.js"></script>
+<script>
+const D = window.HEALTH_DATA;
+const $ = id => document.getElementById(id);
+const FLAG_RU = { high: "выше нормы", low: "ниже нормы", ok: "в норме" };
+const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+
+/* ---------- общие помощники ---------- */
+const fmtDate = iso => { const [y, m, d] = iso.split("-").map(Number); return `${d} ${MONTHS[m - 1]} ${y}`; };   // "2025-01-15" -> "15 января 2025"
+const fmtShort = iso => { const [, m, d] = iso.split("-").map(Number); return `${d} ${MONTHS[m - 1].slice(0, 3)}`; };
+const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? few : many; };
+const list = items => items.length ? `<ul>${items.map(i => `<li>${i}</li>`).join("")}</ul>` : `<span class="empty">нет</span>`;
+const lastOf = b => b.series[b.series.length - 1];
+const bmByKey = k => D.biomarkers.find(b => b.key === k);
+function ageYears(birthIso, now) {
+  const b = new Date(birthIso + "T00:00:00");
+  const a = now.getFullYear() - b.getFullYear();
+  return now.getMonth() > b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() >= b.getDate()) ? a : a - 1;
+}
+
+/* ---------- часы: среднее за 7 дней против нормы (нужно и обзору, и сну) ---------- */
+const G = D.garmin && D.garmin.days && D.garmin.days.length >= 7 ? D.garmin : null;
+const last7 = G ? G.days.slice(-7) : [];
+const avg = k => last7.reduce((s, r) => s + r[k], 0) / last7.length;
+const num = (v, dig) => dig ? v.toFixed(dig).replace(".", ",") : Math.round(v).toLocaleString("ru-RU");
+// норма — коридор p25..p75 из личной истории; good: 1 — чем больше, тем лучше, -1 — чем меньше, тем лучше
+function vsNorm(k, dig, good) {
+  const a = avg(k), n = G.norms[k], r = v => Number(v.toFixed(dig));
+  const pos = r(a) < r(n.p25) ? -1 : r(a) > r(n.p75) ? 1 : 0;
+  const bad = pos !== 0 && pos !== good;
+  return { a, text: pos === 0 ? "в вашей норме" : bad ? (pos < 0 ? "ниже нормы" : "выше нормы") : "лучше нормы",
+           cls: bad ? "amber" : "green", range: `${num(n.p25, dig)}–${num(n.p75, dig)}` };
+}
+
+/* ---------- обзор ---------- */
+const p = D.profile, today = new Date();
+const age = ageYears(p.birth, today);
+$("name").textContent = p.name;
+$("avatar").textContent = p.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("");
+const nAn = D.biomarkers.reduce((s, b) => s + b.series.length, 0);
+$("meta").textContent = `${age} ${plural(age, "год", "года", "лет")} · ${D.biomarkers.length} показателей, ${nAn} замеров · ${D.visits.length} ${plural(D.visits.length, "визит", "визита", "визитов")} · обновлено ${fmtDate(D.generated)}`;
+
+(function renderTiles() {
+  const tiles = [];
+  const bm = (key, label) => {
+    const b = bmByKey(key); if (!b) return;
+    const l = lastOf(b);
+    tiles.push({ label, val: l.value, unit: b.unit, cls: l.flag === "ok" ? "green" : "red",
+      cap: `${FLAG_RU[l.flag]} · норма ${b.ref} · ${fmtDate(l.date)}`, href: "#analyses", key });
+  };
+  bm("ldl", "LDL"); bm("vitd", "Витамин D");
+  if (G) {
+    const hrs = vsNorm("sleepHours", 1, 1), hr = vsNorm("restingHR", 0, -1);
+    tiles.push({ label: "Сон, 7 дней", val: num(hrs.a, 1), unit: "ч", cls: hrs.cls, cap: hrs.text, href: "#sleep" });
+    tiles.push({ label: "Пульс в покое", val: num(hr.a, 0), unit: "уд/мин", cls: hr.cls, cap: hr.text, href: "#sleep" });
+  }
+  $("tiles").innerHTML = tiles.map(t => `<a class="tile ${t.cls}" href="${t.href}"${t.key ? ` data-key="${t.key}"` : ""}>
+    <div class="tn">${t.label}</div><div class="tv">${t.val}<small>${t.unit}</small></div><div class="tc">${t.cap}</div></a>`).join("");
+})();
+
+// статусы: если строка про показатели — карточка раскрывается графиками
+const esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const mentioned = text => D.biomarkers.filter(b => [b.name, b.fullName].some(n =>
+  new RegExp(`(?<![\\p{L}\\p{N}])${esc(n)}(?![\\p{L}\\p{N}])`, "iu").test(text)));
+function tldrMarkers(t) {
+  if (t.markers && t.markers.length) return t.markers.map(bmByKey).filter(Boolean);
+  return mentioned(t.text);
+}
+const chipsOf = b => b.series.slice(-3).map(s => {
+  const [y, m, d] = s.date.split("-").map(Number);
+  return `<span class="chip ${s.flag}" title="${fmtDate(s.date)}">${d} ${MONTHS[m - 1].slice(0, 3)} ${y} · <b>${s.value}</b> ${b.unit}</span>`;
+}).join("");
+const miniBlock = b => `<div class="mini" data-key="${b.key}">
+  <div class="mini-h"><b>${b.name}</b>${b.fullName !== b.name ? ` · ${b.fullName}` : ""} · норма ${b.ref}</div>
+  <div class="chartbox"><canvas></canvas></div>
+  <div class="chips">${chipsOf(b)}</div>
+  <a class="golink" href="#analyses" data-key="${b.key}">Открыть в анализах: ${b.name} →</a>
+</div>`;
+$("tldr").innerHTML = D.tldr.map((t, i) => {
+  const ms = tldrMarkers(t);
+  const ic = t.level === "ok" ? "✅" : t.level === "warn" ? "⚠️" : "ℹ️";
+  if (!ms.length) return `<div class="row ${t.level}"><div class="rhead"><span>${ic}</span><span class="rtext">${t.text}</span></div></div>`;
+  return `<div class="row exp ${t.level}" data-i="${i}" role="button" tabindex="0" aria-expanded="false" aria-controls="tb-${i}">
+    <div class="rhead"><span>${ic}</span><span class="rtext">${t.text}</span><span class="chev" aria-hidden="true">▾</span></div>
+    <div class="rbody" id="tb-${i}"><div class="rin"><div class="rpad">${ms.map(miniBlock).join("")}</div></div></div>
+  </div>`;
+}).join("");
+
+function toggleRow(row) {
+  const open = !row.classList.contains("open");
+  row.classList.toggle("open", open);
+  row.setAttribute("aria-expanded", open);
+  row.querySelector(".chev").textContent = open ? "▴" : "▾";
+  if (open && !row.dataset.drawn) {        // графики рисуем при первом раскрытии, когда у блока уже есть размер
+    row.dataset.drawn = "1";
+    requestAnimationFrame(() => row.querySelectorAll(".mini").forEach(m => drawChart(m.querySelector("canvas"), bmByKey(m.dataset.key))));
+  }
+}
+function bindRows(box) {
+  box.addEventListener("click", e => {
+    const link = e.target.closest(".golink");
+    if (link) {
+      e.preventDefault();
+      if (link.dataset.visit != null) goTo("visits", "visit-" + link.dataset.visit); else openInAnalyses(link.dataset.key);
+      return;
+    }
+    const row = e.target.closest(".row.exp");
+    if (row && e.target.closest(".rhead")) toggleRow(row);   // клики по графикам не сворачивают карточку
+  });
+  box.addEventListener("keydown", e => {
+    const row = e.target.closest(".row.exp");
+    if (row && e.target === row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleRow(row); }
+  });
+}
+bindRows($("tldr"));
+$("tiles").addEventListener("click", e => {
+  const tile = e.target.closest(".tile[data-key]");
+  if (tile) { e.preventDefault(); openInAnalyses(tile.dataset.key); }
+});
+
+// переход в раздел к нужной карточке (показатель в «Анализах», визит в «Визитах») с короткой подсветкой
+let pendingFocus = null;
+function focusCard(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 1500);
+}
+function goTo(mod, elId) {
+  pendingFocus = { mod, elId };
+  if (location.hash === "#" + mod) { route(); } else { location.hash = "#" + mod; }
+}
+const openInAnalyses = key => goTo("analyses", "bm-" + key);
+
+/* ---------- анализы ---------- */
+const FLAG_COLOR = { ok: "#16a34a", high: "#dc2626", low: "#ea8a0c" };
+// дробный год по дате: 2024-07-01 -> ~2024.5
+const yearPos = iso => {
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = Date.UTC(y, m - 1, d), t0 = Date.UTC(y, 0, 1), t1 = Date.UTC(y + 1, 0, 1);
+  return y + (t - t0) / (t1 - t0);
+};
+// границы оси Y: по значениям; норма попадает на ось, только если лежит рядом
+function yRange(b) {
+  const vals = b.series.map(s => s.value);
+  const vMin = Math.min(...vals), vMax = Math.max(...vals);
+  const near = Math.max(vMax - vMin, Math.abs(vMax) * 0.1);
+  let lo = vMin, hi = vMax;
+  for (const bound of [b.low, b.high]) {
+    if (bound == null) continue;
+    if (bound >= vMin - near && bound <= vMax + near) { lo = Math.min(lo, bound); hi = Math.max(hi, bound); }
+  }
+  let span = hi - lo;
+  const minSpan = Math.abs(hi) * 0.2;               // минимальный размах — 20% от верхнего значения
+  if (span < minSpan) { const mid = (lo + hi) / 2; lo = mid - minSpan / 2; hi = mid + minSpan / 2; span = minSpan; }
+  if (span <= 0) { lo -= 1; hi += 1; span = 2; }     // защита: все значения 0
+  return { min: lo - span * 0.15, max: hi + span * 0.15 };
+}
+// светло-зелёная полоса нормы под линией
+const normBand = {
+  id: "normBand",
+  beforeDatasetsDraw(chart, args, opts) {
+    if (!opts || (opts.low == null && opts.high == null)) return;
+    const { ctx, chartArea: ca, scales: { y } } = chart;
+    const yTop = opts.high == null ? ca.top : y.getPixelForValue(opts.high);
+    const yBot = opts.low == null ? ca.bottom : y.getPixelForValue(opts.low);
+    const t = Math.max(ca.top, Math.min(yTop, yBot)), bt = Math.min(ca.bottom, Math.max(yTop, yBot));
+    if (bt <= t) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(ca.left, ca.top, ca.right - ca.left, ca.bottom - ca.top); ctx.clip();
+    ctx.fillStyle = "rgba(22, 163, 74, 0.13)";
+    ctx.fillRect(ca.left, t, ca.right - ca.left, bt - t);
+    ctx.restore();
+  }
+};
+function drawChart(canvas, b) {
+  const pts = b.series.map(s => ({ x: yearPos(s.date), y: s.value, date: s.date, lab: s.lab, flag: s.flag }));
+  const xs = pts.map(p => p.x);
+  const xMin = Math.floor(Math.min(...xs)), xMax = Math.max(Math.ceil(Math.max(...xs)), xMin + 1);
+  const yr = yRange(b);
+  new Chart(canvas, {
+    type: "line",
+    data: { datasets: [{
+      data: pts, parsing: false, clip: false, borderColor: "#2563eb", borderWidth: 2, tension: 0.2, fill: false,
+      pointRadius: 6, pointHoverRadius: 8, pointBorderWidth: 2, pointBorderColor: "#fff",
+      pointBackgroundColor: pts.map(p => FLAG_COLOR[p.flag] || FLAG_COLOR.ok),
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { left: 2, right: 10, top: 8, bottom: 0 } },
+      interaction: { mode: "nearest", intersect: true },
+      scales: {
+        x: { type: "linear", min: xMin, max: xMax, ticks: { stepSize: 1, callback: v => Number.isInteger(v) ? v : "", maxRotation: 0 }, grid: { display: false } },
+        y: { suggestedMin: yr.min, suggestedMax: yr.max, ticks: { maxTicksLimit: 6 } },
+      },
+      plugins: {
+        legend: { display: false },
+        normBand: { low: b.low, high: b.high },
+        tooltip: { callbacks: {
+          title: items => fmtDate(items[0].raw.date),
+          label: item => `${item.raw.y} ${b.unit}`,
+          afterLabel: item => item.raw.lab || "",
+        } },
+      },
+    },
+    plugins: [normBand],
+  });
+}
+function labCard(b, i) {
+  const l = lastOf(b), n = b.series.length;
+  return `<div class="bcard st-${l.flag}" id="bm-${b.key}">
+    <div class="bhead">
+      <div class="bl"><div class="bname">${b.name}</div>${b.fullName !== b.name ? `<div class="bfull">${b.fullName}</div>` : ""}</div>
+      <div class="br"><div class="bval">${l.value}<small>${b.unit}</small></div><div class="blab">${FLAG_RU[l.flag]}</div></div>
+    </div>
+    <div class="binfo">Норма: ${b.ref}<br>Последний: ${fmtDate(l.date)} · ${n} ${plural(n, "замер", "замера", "замеров")}</div>
+    <div class="chartbox"><canvas data-i="${i}"></canvas></div>
+  </div>`;
+}
+function renderLabs() {
+  const groups = [...new Set(D.biomarkers.map(b => b.group))];
+  $("labs").innerHTML = groups.map(g => `<h3 class="gname">${g}</h3>
+    <div class="lgrid">${D.biomarkers.map((b, i) => b.group === g ? labCard(b, i) : "").join("")}</div>`).join("");
+  document.querySelectorAll("#labs canvas").forEach(c => drawChart(c, D.biomarkers[+c.dataset.i]));
+}
+
+/* ---------- сон и пульс ---------- */
+function renderSleep() {
+  if (!G) { $("sleepTiles").innerHTML = '<span class="empty">Данных часов нет.</span>'; return; }
+  // [ключ, подпись, единицы, знаков после запятой, что лучше: 1 — больше, -1 — меньше]
+  const T = [["sleepHours", "Сон", "ч", 1, 1], ["restingHR", "Пульс в покое", "уд/мин", 0, -1], ["hrvMs", "HRV", "мс", 0, 1]];
+  $("sleepTiles").innerHTML = T.map(([k, label, unit, dig, good]) => {
+    const v = vsNorm(k, dig, good);
+    return `<div class="tile ${v.cls}"><div class="tn">${label}</div><div class="tv">${num(v.a, dig)}<small>${unit}</small></div>
+      <div class="tc">${v.text}<br>норма ${v.range}</div></div>`;
+  }).join("");
+  $("sleepTiles").style.gridTemplateColumns = "repeat(auto-fit, minmax(170px, 1fr))";
+
+  const rows = [...last7].reverse().map(r => `<tr>
+    <td>${fmtShort(r.date)}</td>
+    <td class="num" data-l="Сон">${num(r.sleepHours, 1)} ч</td>
+    <td class="num" data-l="Балл сна">${r.sleepScore}</td>
+    <td class="num" data-l="Пульс в покое">${r.restingHR}</td>
+    <td class="num" data-l="HRV">${r.hrvMs}</td>
+    <td class="num" data-l="Шаги">${num(r.steps, 0)}</td></tr>`).join("");
+  $("sleepDays").innerHTML = `<table class="tbl days"><thead><tr><th>Дата</th><th class="num">Сон</th><th class="num">Балл сна</th>
+    <th class="num">Пульс в покое</th><th class="num">HRV</th><th class="num">Шаги</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ---------- визиты ---------- */
+$("visits").innerHTML = D.visits.length ? D.visits.map((v, i) => ({ v, i })).sort((a, b) => b.v.date.localeCompare(a.v.date)).map(({ v, i }) => `
+  <div class="card visit" id="visit-${i}">
+    <div class="vh">${v.diagnosis}</div>
+    <div class="vs">${fmtDate(v.date)} · ${v.doctor} · ${v.clinic}</div>
+    <p>${v.findings}</p>
+    <b class="rh">Рекомендации</b>${list(v.recs)}
+  </div>`).join("") : `<div class="empty">Визитов пока нет.</div>`;
+
+/* ---------- напоминания ---------- */
+const DAY_MS = 864e5;
+const dayNum = iso => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d) / DAY_MS; };
+const todayNum = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / DAY_MS;   // сегодняшняя дата — из браузера
+function remStatus(r) {
+  const n = Math.round(dayNum(r.due) - todayNum);
+  const days = k => `${k} ${plural(k, "день", "дня", "дней")}`;
+  if (n < 0) return { cls: "over", n, text: `просрочено на ${days(-n)}` };
+  const text = n === 0 ? "срок — сегодня" : `через ${days(n)}`;
+  return { cls: n <= 30 ? "soon" : "later", n, text };
+}
+// какой визит рекомендовал: слова из названия напоминания и имён показателей ищем в рекомендациях (по основе слова)
+const wordsOf = s => (s.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []);
+const stemOf = w => w.length > 6 ? w.slice(0, w.length - 2) : w;
+function remVisit(r, ms) {
+  const stems = [...new Set([r.what, ...ms.flatMap(b => [b.name, b.fullName])].flatMap(wordsOf).map(stemOf))];
+  let best = null;
+  D.visits.forEach((v, i) => {
+    const score = Math.max(0, ...v.recs.map(rec => { const ws = wordsOf(rec); return stems.filter(st => ws.some(w => w.startsWith(st))).length; }));
+    if (score && (!best || score > best.score || (score === best.score && v.date > best.v.date))) best = { v, i, score };
+  });
+  return best;
+}
+const remMini = b => { const l = lastOf(b); return `<div class="mini" data-key="${b.key}">
+  <div class="mini-h"><b>${b.name}</b>${b.fullName !== b.name ? ` · ${b.fullName}` : ""} · норма ${b.ref}</div>
+  <div class="chartbox"><canvas></canvas></div>
+  <div class="last">последняя сдача: ${fmtDate(l.date)}, <b>${l.value}</b> ${b.unit}</div>
+</div>`; };
+function remCard(r, scope) {
+  const st = remStatus(r), ms = (r.markers || []).map(bmByKey).filter(Boolean), v = remVisit(r, ms);
+  const head = `<span class="rtext"><span class="rwhat">${r.what}</span><span class="rwhy">${r.why}</span></span>
+    <span class="rdue">срок: ${fmtDate(r.due)}<b class="rst">${st.text}</b></span>`;
+  if (!ms.length && !v) return `<div class="row rem ${st.cls}"><div class="rhead">${head}</div></div>`;
+  const id = `rb-${scope}-${r.id}`;
+  return `<div class="row exp rem ${st.cls}" role="button" tabindex="0" aria-expanded="false" aria-controls="${id}">
+    <div class="rhead">${head}<span class="chev" aria-hidden="true">▾</span></div>
+    <div class="rbody" id="${id}"><div class="rin"><div class="rpad">${ms.map(remMini).join("")}${v
+      ? `<a class="golink recl" href="#visits" data-visit="${v.i}">рекомендовал: ${v.v.doctor}, ${fmtDate(v.v.date)} →</a>` : ""}</div></div></div>
+  </div>`;
+}
+const planned = D.reminders.filter(r => r.status === "planned").sort((a, b) => a.due.localeCompare(b.due));
+const done = D.reminders.filter(r => r.status === "done").sort((a, b) => b.due.localeCompare(a.due));
+$("remsList").innerHTML = planned.length ? planned.map(r => remCard(r, "all")).join("") : `<div class="empty">Запланированных напоминаний нет.</div>`;
+$("remsDone").innerHTML = done.length ? `<details class="rdone"><summary>Выполнено (${done.length})</summary>${done.map(r => `
+  <div class="drow"><span><b>${r.what}</b><small>${r.why}</small></span><span class="dd">срок был: ${fmtDate(r.due)}</span></div>`).join("")}</details>` : "";
+if (planned.length) {
+  $("remsNear").innerHTML = planned.slice(0, 2).map(r => remCard(r, "near")).join("");
+  $("remsOverview").hidden = false;
+}
+bindRows($("remsList")); bindRows($("remsNear"));
+// счётчик в меню: запланированные, что просрочены или наступают в ближайшие 30 дней
+const remDue = planned.filter(r => remStatus(r).n <= 30);
+const remBadge = remDue.length ? { n: remDue.length, cls: remDue.some(r => remStatus(r).n < 0) ? "red" : "amber" } : null;
+
+/* ---------- профиль ---------- */
+$("profile").innerHTML = `
+  <div class="pgrid">
+    <div><div class="lbl">Имя</div><div class="pv">${p.name}</div></div>
+    <div><div class="lbl">Дата рождения</div><div class="pv">${fmtDate(p.birth)}</div></div>
+    <div><div class="lbl">Возраст</div><div class="pv">${age} ${plural(age, "год", "года", "лет")}</div></div>
+    <div><div class="lbl">Пол</div><div class="pv">${p.sex}</div></div>
+  </div>
+  <div class="psections">
+    <div class="psec"><div class="lbl">Диагнозы</div>${list(p.diagnoses)}</div>
+    <div class="psec"><div class="lbl">Препараты</div>${list(p.meds)}</div>
+    <div class="psec"><div class="lbl">Заметки</div>${list(p.notes)}</div>
+  </div>`;
+
+/* ---------- навигация по хэшу (#overview, #analyses, ...) ---------- */
+// init — функция, которая рисует вкладку при первом открытии
+const NAV = [
+  { id: "overview", ic: "🏠", t: "Обзор" },
+  { id: "analyses", ic: "🩸", t: "Анализы", b: D.biomarkers.length, init: renderLabs },
+  { id: "sleep", ic: "⌚", t: "Сон и пульс", hide: !G, init: renderSleep },
+  { id: "visits", ic: "🩺", t: "Визиты к врачам", b: D.visits.length || null },
+  { id: "reminders", ic: "📅", t: "Напоминания", b: remBadge && remBadge.n, bc: remBadge && remBadge.cls },
+  { id: "profile", ic: "👤", t: "Профиль" },
+].filter(n => !n.hide);
+$("nav").innerHTML = `<div class="navgrp"><div class="gt">Карта здоровья</div>` + NAV.map(n =>
+  `<a class="navitem" href="#${n.id}" data-id="${n.id}"><span class="ni-ic">${n.ic}</span><span class="ni-tx">${n.t}</span>` +
+  (n.b ? `<span class="ni-b${n.bc ? " " + n.bc : ""}">${n.b}</span>` : "") + `</a>`).join("") + `</div>`;
+const inited = {};
+function route() {
+  let id = location.hash.replace("#", "");
+  if (!NAV.some(n => n.id === id)) id = "overview";
+  document.querySelectorAll(".module").forEach(m => m.classList.toggle("active", m.id === "m-" + id));
+  document.querySelectorAll(".navitem").forEach(a => {
+    const on = a.dataset.id === id;
+    a.classList.toggle("active", on);
+    if (on && window.innerWidth < 760) a.scrollIntoView({ inline: "center", block: "nearest" });
+  });
+  const n = NAV.find(x => x.id === id);
+  if (n.init && !inited[id]) { inited[id] = true; n.init(); }
+  document.title = `${n.t} · Health OS`;
+  window.scrollTo(0, 0);
+  if (pendingFocus && id === pendingFocus.mod) { const k = pendingFocus.elId; pendingFocus = null; requestAnimationFrame(() => focusCard(k)); }
+}
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>
