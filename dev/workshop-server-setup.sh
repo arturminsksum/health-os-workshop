@@ -9,6 +9,7 @@ IP="$(curl -s -4 ifconfig.me)"
 : "${OPENAI_API_KEY:?нужен OPENAI_API_KEY}"
 
 export DEBIAN_FRONTEND=noninteractive
+timedatectl set-timezone Europe/Warsaw  # время в ленте «Что нового» и напоминаниях — местное
 apt-get update -q
 apt-get install -y -q git python3-pil nodejs npm nano >/dev/null
 npm install -g -s @anthropic-ai/claude-code @openai/codex >/dev/null
