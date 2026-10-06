@@ -156,6 +156,15 @@
     color: #5b4300; font-weight: 650; text-decoration: none; box-shadow: var(--shadow); }
   .newbanner:hover { background: #fff3c2; }
   .newbanner[hidden] { display: none; }
+  .latblk { margin-bottom: 8px; padding: 14px; border-radius: 14px; background: #eef2f9; border: 1px solid var(--border); }
+  .latblk.isnew { background: #fff3c2 !important; border-color: #f1df9a !important; }
+  .lathead { font-weight: 700; font-size: 16px; margin: 0 2px 12px; }
+  .latblk.isnew .newpill { display: inline-block; }
+  .lastlab { display: block; margin-top: 12px; padding: 11px 15px; border-radius: 11px; background: var(--card); border: 1px solid var(--border);
+    box-shadow: var(--shadow); text-decoration: none; color: var(--ink); font-size: 15px; }
+  .lastlab:hover { border-color: #cfd6e4; }
+  .lastlab .ok { color: var(--green); font-weight: 700; } .lastlab .bad { color: var(--red); font-weight: 700; }
+  .lastlab .go { color: var(--accent); font-weight: 600; white-space: nowrap; }
   .evcard { margin-bottom: 12px; border-left: 4px solid var(--accent); }
   .evcard.k-analysis { border-left-color: var(--red); } .evcard.k-visit { border-left-color: var(--green); } .evcard.k-import { border-left-color: var(--faint); }
   .evhead { display: flex; gap: 12px; align-items: flex-start; }
@@ -232,6 +241,7 @@
       <div class="hero"><div class="avatar" id="avatar"></div><div><h1 id="name"></h1><div class="hm" id="meta"></div></div></div>
       <h2 class="section">Ключевые цифры</h2>
       <div class="tiles" id="tiles"></div>
+      <div id="lastLab"></div>
       <h2 class="section">Статус: на что смотреть</h2>
       <div class="tldr" id="tldr"></div>
       <h2 class="section">Ближайшие напоминания</h2>
@@ -248,6 +258,7 @@
     <section class="module" id="m-analyses">
       <h1 class="mtitle">Анализы</h1>
       <div class="mdesc">Лабораторные показатели во времени. Зелёная полоса на графике — референсная норма.</div>
+      <div id="latest"></div>
       <div id="labs"></div>
     </section>
 
@@ -378,28 +389,34 @@ function drawChart(canvas, b) {
   });
 }
 
+function labCard(b, idAttr) {
+  const last = b.series[b.series.length - 1], n = b.series.length;
+  return `<div class="card bcard ${last.flag}" ${idAttr} data-key="${b.key}">
+    <div class="bhead">
+      <div><div class="bname">${b.name}<span class="newpill">новое</span></div><div class="bfull">${b.fullName}</div></div>
+      <div class="bval ${last.flag}">${last.value}<small>${b.unit}</small></div>
+    </div>
+    <div class="bsub">
+      <span>Норма: ${b.ref} ${b.unit}</span>
+      <span class="badge ${last.flag}">${FLAG_RU[last.flag]}</span>
+    </div>
+    <div class="bsub"><span>Последний: ${fmtDate(last.date)} · ${n} ${plural(n, "замер", "замера", "замеров")}</span></div>
+    <div class="chart"><canvas data-key="${b.key}"></canvas></div>
+  </div>`;
+}
 function renderLabs() {
-  const groups = [...new Set(D.biomarkers.map(b => b.group))];
-  $("labs").innerHTML = groups.map(g => {
-    const cards = D.biomarkers.filter(b => b.group === g).map(b => {
-      const last = b.series[b.series.length - 1];
-      const n = b.series.length;
-      return `<div class="card bcard ${last.flag}" id="bm-${b.key}">
-        <div class="bhead">
-          <div><div class="bname">${b.name}<span class="newpill">новое</span></div><div class="bfull">${b.fullName}</div></div>
-          <div class="bval ${last.flag}">${last.value}<small>${b.unit}</small></div>
-        </div>
-        <div class="bsub">
-          <span>Норма: ${b.ref} ${b.unit}</span>
-          <span class="badge ${last.flag}">${FLAG_RU[last.flag]}</span>
-        </div>
-        <div class="bsub"><span>Последний: ${fmtDate(last.date)} · ${n} ${plural(n, "замер", "замера", "замеров")}</span></div>
-        <div class="chart"><canvas data-key="${b.key}"></canvas></div>
-      </div>`;
-    }).join("");
-    return `<h3 class="gname">${g}</h3><div class="bgrid">${cards}</div>`;
+  // сверху — последние добавленные анализы: новые данные не должны прятаться в нижних группах
+  $("latest").innerHTML = LATEST.map((e, bi) => {
+    const keys = (e.markers || []).filter(bmByKey);
+    const lab = (() => { for (const k of keys) { const p = bmByKey(k).series.find(x => x.date === e.date); if (p && p.lab) return p.lab; } return e.title.replace(/^Анализ,\s*/, ""); })();
+    return `<div class="latblk" data-ev="${e.i}" id="lat-${bi}">
+      <div class="lathead">🆕 ${bi === 0 ? "Последний добавленный анализ" : "Добавленный анализ"} — ${fmtDate(e.date)}, ${lab}, добавлен ${addedText(e.added)}<span class="newpill">новое</span></div>
+      <div class="bgrid">${keys.map(k => labCard(bmByKey(k), "")).join("")}</div></div>`;
   }).join("");
-  document.querySelectorAll("#labs canvas[data-key]").forEach(c =>
+  const groups = [...new Set(D.biomarkers.map(b => b.group))];
+  $("labs").innerHTML = groups.map(g =>
+    `<h3 class="gname">${g}</h3><div class="bgrid">${D.biomarkers.filter(b => b.group === g).map(b => labCard(b, `id="bm-${b.key}"`)).join("")}</div>`).join("");
+  document.querySelectorAll("#latest canvas[data-key], #labs canvas[data-key]").forEach(c =>
     drawChart(c, D.biomarkers.find(b => b.key === c.dataset.key)));
 }
 
@@ -720,6 +737,21 @@ let UNSEEN = new Set();   // индексы событий, ещё не прос
 })();
 const unseenEvents = () => EV.filter(e => UNSEEN.has(e.i));
 function isNewPoint(key, date) { return date && unseenEvents().some(e => e.date === date && (e.markers || []).includes(key)); }
+const anEvents = EV.filter(e => e.kind === "analysis" && (e.markers || []).some(k => bmByKey(k))).sort((a, b) => b.added.localeCompare(a.added));
+const unseenAn = anEvents.filter(e => UNSEEN.has(e.i));
+const LATEST = (unseenAn.length ? unseenAn : anEvents.slice(0, 1)).slice(0, 3);   // блоки «последний анализ» в начале «Анализов»
+(function lastLabLine() {
+  const e = anEvents[0];
+  if (!e || (new Date(todayIso) - new Date(e.added.slice(0, 10))) / DAY > 7) return;
+  const items = e.markers.filter(bmByKey).map(k => {
+    const b = bmByKey(k), pt = b.series.find(x => x.date === e.date) || b.series[b.series.length - 1];
+    return { b, pt };
+  });
+  const bad = items.filter(x => x.pt.flag !== "ok");
+  $("lastLab").innerHTML = `<a class="lastlab" href="#analyses" data-focus="top:${items[0].b.key}">Последний анализ ${fmtDate(e.date).replace(/ \d{4}$/, "")}: ` +
+    items.map(x => `<span class="${x.pt.flag === "ok" ? "ok" : "bad"}">${x.b.name} ${x.pt.value}</span>`).join(", ") +
+    ` — ${bad.length ? "вне нормы: " + bad.map(x => x.b.name).join(", ") : "всё в норме"} <span class="go">→ открыть</span></a>`;
+})();
 const KIND_IC = { import: "📥", analysis: "🧪", visit: "🩺" };
 function addedText(iso) {
   const [d, t] = iso.split("T"), tm = (t || "").slice(0, 5), td = todayIso;
@@ -735,7 +767,7 @@ $("feed").innerHTML = EV.length ? [...EV].sort((a, b) => b.added.localeCompare(a
       <div><div class="evt">${e.title}<span class="newpill">новое</span></div>
       <div class="evm">добавлено ${addedText(e.added)} · дата документа: ${fmtDate(e.date)}</div></div></div>
     ${e.lines && e.lines.length ? `<ul>${e.lines.map(l => `<li>${l}</li>`).join("")}</ul>` : ""}
-    ${(e.markers || []).filter(bmByKey).length ? `<div class="chips">${e.markers.filter(bmByKey).map(k => `<a class="chip" href="#analyses" data-focus="${k}">${bmByKey(k).name}</a>`).join("")}</div>` : ""}
+    ${(e.markers || []).filter(bmByKey).length ? `<div class="chips">${e.markers.filter(bmByKey).map(k => `<a class="chip" href="#analyses" data-focus="${e.kind === "analysis" ? "top:" : ""}${k}">${bmByKey(k).name}</a>`).join("")}</div>` : ""}
   </div>`).join("") : `<div class="empty">Пока ничего нового.</div>`;
 
 // подсветка «нового» везде; вызывается при каждой смене экрана
@@ -743,7 +775,8 @@ function paint() {
   const evs = unseenEvents(), n = evs.length;
   const touched = new Set(evs.flatMap(e => e.markers || []));
   document.querySelectorAll(".evcard").forEach(c => c.classList.toggle("isnew", UNSEEN.has(+c.dataset.ev)));
-  document.querySelectorAll(".bcard").forEach(c => c.classList.toggle("isnew", touched.has(c.id.replace("bm-", ""))));
+  document.querySelectorAll(".bcard").forEach(c => c.classList.toggle("isnew", touched.has(c.dataset.key)));
+  document.querySelectorAll(".latblk").forEach(c => c.classList.toggle("isnew", UNSEEN.has(+c.dataset.ev)));
   document.querySelectorAll(".visit").forEach(c => c.classList.toggle("isnew", evs.some(e => e.kind === "visit" && e.date === c.dataset.vdate)));
   const badge = $("newBadge"); if (badge) { badge.textContent = n; badge.hidden = !n; }
   const bn = $("newBanner");
@@ -785,7 +818,8 @@ function route() {
   document.title = `${n.t} · Health OS`;
   window.scrollTo(0, 0);
   if (focusKey) {
-    const el = document.getElementById("bm-" + focusKey); focusKey = null;
+    const fk = focusKey; focusKey = null;
+    const el = fk.startsWith("top:") ? (document.querySelector(`.latblk .bcard[data-key="${fk.slice(4)}"]`) || document.getElementById("bm-" + fk.slice(4))) : document.getElementById("bm-" + fk);
     if (el) setTimeout(() => { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }, 60);
   }
 }
