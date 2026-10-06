@@ -147,6 +147,28 @@
   @keyframes flash { 0%, 60% { box-shadow: 0 0 0 3px rgba(37,99,235,.55), 0 6px 18px rgba(37,99,235,.2); } 100% { box-shadow: var(--shadow); } }
   .bcard.flash { animation: flash 2.2s ease; }
 
+  /* новые данные */
+  .isnew { background: #fff8db !important; border-color: #f1df9a !important; }
+  .newpill { display: none; font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 20px; background: #facc15; color: #5b4300;
+    margin-left: 8px; vertical-align: 2px; letter-spacing: .02em; white-space: nowrap; }
+  .isnew .newpill { display: inline-block; }
+  .newbanner { display: block; margin-bottom: 14px; padding: 12px 16px; border-radius: 12px; background: #fff8db; border: 1px solid #f1df9a;
+    color: #5b4300; font-weight: 650; text-decoration: none; box-shadow: var(--shadow); }
+  .newbanner:hover { background: #fff3c2; }
+  .newbanner[hidden] { display: none; }
+  .evcard { margin-bottom: 12px; border-left: 4px solid var(--accent); }
+  .evcard.k-analysis { border-left-color: var(--red); } .evcard.k-visit { border-left-color: var(--green); } .evcard.k-import { border-left-color: var(--faint); }
+  .evhead { display: flex; gap: 12px; align-items: flex-start; }
+  .evic { font-size: 22px; line-height: 1.2; flex: none; }
+  .evt { font-weight: 700; font-size: 17px; }
+  .evm { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+  .evcard ul { margin: 10px 0 0; padding-left: 20px; } .evcard li { margin: 4px 0; font-size: 15px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip { font-size: 12.5px; font-weight: 600; padding: 3px 11px; border-radius: 20px; background: var(--accent-bg); color: var(--accent); text-decoration: none; }
+  .chip:hover { background: #dbe6ff; }
+  .ni-b.yellow { color: #5b4300; background: #facc15; }
+  .ni-b[hidden] { display: none; }
+
   /* визиты */
   .visit { margin-bottom: 12px; border-left: 4px solid var(--accent); }
   .visit .vh { font-weight: 700; font-size: 17px; }
@@ -206,6 +228,7 @@
   <main class="main"><div class="content">
 
     <section class="module" id="m-overview">
+      <a class="newbanner" href="#new" id="newBanner" hidden></a>
       <div class="hero"><div class="avatar" id="avatar"></div><div><h1 id="name"></h1><div class="hm" id="meta"></div></div></div>
       <h2 class="section">Ключевые цифры</h2>
       <div class="tiles" id="tiles"></div>
@@ -214,6 +237,12 @@
       <h2 class="section">Ближайшие напоминания</h2>
       <div id="nextRem"></div>
       <a class="more" href="#reminders">Все напоминания →</a>
+    </section>
+
+    <section class="module" id="m-new">
+      <h1 class="mtitle">Что нового</h1>
+      <div class="mdesc">Недавно добавленные документы и что в них изменилось. Новые подсвечены жёлтым.</div>
+      <div id="feed"></div>
     </section>
 
     <section class="module" id="m-analyses">
@@ -322,8 +351,10 @@ function drawChart(canvas, b) {
     type: "line",
     data: { datasets: [{
       data: pts, borderColor: "#2563eb", backgroundColor: "#2563eb", borderWidth: 2, tension: 0.2,
-      pointRadius: 5, pointHoverRadius: 7,
-      pointBackgroundColor: b.series.map(s => COLOR[s.flag]), pointBorderColor: "#fff", pointBorderWidth: 1.5,
+      pointRadius: c => isNewPoint(b.key, c.raw && c.raw.date) ? 8 : 5, pointHoverRadius: 8,
+      pointBackgroundColor: b.series.map(s => COLOR[s.flag]),
+      pointBorderColor: c => isNewPoint(b.key, c.raw && c.raw.date) ? "#facc15" : "#fff",
+      pointBorderWidth: c => isNewPoint(b.key, c.raw && c.raw.date) ? 4 : 1.5,
     }] },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -355,7 +386,7 @@ function renderLabs() {
       const n = b.series.length;
       return `<div class="card bcard ${last.flag}" id="bm-${b.key}">
         <div class="bhead">
-          <div><div class="bname">${b.name}</div><div class="bfull">${b.fullName}</div></div>
+          <div><div class="bname">${b.name}<span class="newpill">новое</span></div><div class="bfull">${b.fullName}</div></div>
           <div class="bval ${last.flag}">${last.value}<small>${b.unit}</small></div>
         </div>
         <div class="bsub">
@@ -644,8 +675,8 @@ $("nextRem").innerHTML = sortedRem.length ? sortedRem.filter(r => r.status === "
 
 /* ---------- визиты ---------- */
 $("visits").innerHTML = D.visits.length ? [...D.visits].sort((a, b) => b.date.localeCompare(a.date)).map(v => `
-  <div class="card visit">
-    <div class="vh">${v.diagnosis}</div>
+  <div class="card visit" data-vdate="${v.date}">
+    <div class="vh">${v.diagnosis}<span class="newpill">новое</span></div>
     <div class="vs">${fmtDate(v.date)} · ${v.doctor} · ${v.clinic}</div>
     <p>${v.findings}</p>
     <b class="rh">Рекомендации</b>${list(v.recs)}
@@ -668,9 +699,63 @@ $("profile").innerHTML = `
     <div class="psec"><div class="lbl">Заметки</div>${list(p.notes)}</div>
   </div>`;
 
+/* ---------- что нового: новые события, «просмотрено» хранится в браузере ---------- */
+const EV = (D.events || []).map((e, i) => ({ ...e, i }));
+const LS_KEY = "healthos-last-seen";
+const pad2 = n => String(n).padStart(2, "0");
+const nowIso = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+const lsGet = () => { try { return localStorage.getItem(LS_KEY); } catch (e) { return undefined; } };
+const lsSet = v => { try { localStorage.setItem(LS_KEY, v); return true; } catch (e) { return false; } };
+let UNSEEN = new Set();   // индексы событий, ещё не просмотренных в этом браузере
+(function initSeen() {
+  let seen = lsGet();
+  if (seen === undefined) {                       // хранилище недоступно: новым считаем последние 3 дня
+    const lim = new Date(Date.now() - 3 * DAY), l = `${lim.getFullYear()}-${pad2(lim.getMonth() + 1)}-${pad2(lim.getDate())}T${pad2(lim.getHours())}:${pad2(lim.getMinutes())}:00`;
+    seen = l;
+  } else if (seen === null) {                     // первый визит: стартовый импорт новым не считаем
+    const imp = EV.filter(e => e.kind === "import").map(e => e.added).sort().pop();
+    seen = imp || nowIso(); lsSet(seen);
+  }
+  EV.forEach(e => { if (e.added > seen) UNSEEN.add(e.i); });
+})();
+const unseenEvents = () => EV.filter(e => UNSEEN.has(e.i));
+function isNewPoint(key, date) { return date && unseenEvents().some(e => e.date === date && (e.markers || []).includes(key)); }
+const KIND_IC = { import: "📥", analysis: "🧪", visit: "🩺" };
+function addedText(iso) {
+  const [d, t] = iso.split("T"), tm = (t || "").slice(0, 5), td = todayIso;
+  const y = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1), yIso = `${y.getFullYear()}-${pad2(y.getMonth() + 1)}-${pad2(y.getDate())}`;
+  if (d === td) return `сегодня в ${tm}`;
+  if (d === yIso) return `вчера в ${tm}`;
+  const [yy, m, dd] = d.split("-").map(Number);
+  return `${dd} ${MONTHS[m - 1]}${yy !== today.getFullYear() ? " " + yy : ""}`;
+}
+$("feed").innerHTML = EV.length ? [...EV].sort((a, b) => b.added.localeCompare(a.added)).map(e => `
+  <div class="card evcard k-${e.kind}" data-ev="${e.i}">
+    <div class="evhead"><span class="evic">${KIND_IC[e.kind] || "📄"}</span>
+      <div><div class="evt">${e.title}<span class="newpill">новое</span></div>
+      <div class="evm">добавлено ${addedText(e.added)} · дата документа: ${fmtDate(e.date)}</div></div></div>
+    ${e.lines && e.lines.length ? `<ul>${e.lines.map(l => `<li>${l}</li>`).join("")}</ul>` : ""}
+    ${(e.markers || []).filter(bmByKey).length ? `<div class="chips">${e.markers.filter(bmByKey).map(k => `<a class="chip" href="#analyses" data-focus="${k}">${bmByKey(k).name}</a>`).join("")}</div>` : ""}
+  </div>`).join("") : `<div class="empty">Пока ничего нового.</div>`;
+
+// подсветка «нового» везде; вызывается при каждой смене экрана
+function paint() {
+  const evs = unseenEvents(), n = evs.length;
+  const touched = new Set(evs.flatMap(e => e.markers || []));
+  document.querySelectorAll(".evcard").forEach(c => c.classList.toggle("isnew", UNSEEN.has(+c.dataset.ev)));
+  document.querySelectorAll(".bcard").forEach(c => c.classList.toggle("isnew", touched.has(c.id.replace("bm-", ""))));
+  document.querySelectorAll(".visit").forEach(c => c.classList.toggle("isnew", evs.some(e => e.kind === "visit" && e.date === c.dataset.vdate)));
+  const badge = $("newBadge"); if (badge) { badge.textContent = n; badge.hidden = !n; }
+  const bn = $("newBanner");
+  bn.hidden = !n;
+  if (n) bn.textContent = `🆕 Добавлено ${n} ${plural(n, "новый документ", "новых документа", "новых документов")} — посмотреть →`;
+  Object.values(Chart.instances || {}).forEach(ch => ch.update("none"));
+}
+
 /* ---------- навигация по хэшу ---------- */
 const NAV = [
   { id: "overview", ic: "🏠", t: "Обзор" },
+  { id: "new", ic: "🆕", t: "Что нового", hide: !EV.length, newBadge: true },
   { id: "analyses", ic: "🩸", t: "Анализы", b: D.biomarkers.length, bc: "grey", init: renderLabs },
   { id: "sleep", ic: "⌚", t: "Сон и пульс", hide: !G, init: renderSleep },
   { id: "visits", ic: "🩺", t: "Визиты к врачам", b: D.visits.length || null, bc: "grey" },
@@ -679,11 +764,15 @@ const NAV = [
 ].filter(n => !n.hide);
 $("nav").innerHTML = `<div class="navgrp"><div class="gt">Карта здоровья</div>` + NAV.map(n =>
   `<a class="navitem" href="#${n.id}" data-id="${n.id}"><span class="ni-ic">${n.ic}</span><span class="ni-tx">${n.t}</span>` +
-  (n.b ? `<span class="ni-b ${n.bc}">${n.b}</span>` : "") + `</a>`).join("") + `</div>`;
+  (n.newBadge ? `<span class="ni-b yellow" id="newBadge" hidden></span>` : n.b ? `<span class="ni-b ${n.bc}">${n.b}</span>` : "") + `</a>`).join("") + `</div>`;
 const inited = {};
+let prevId = null;
 function route() {
   let id = location.hash.replace("#", "");
   if (!NAV.some(n => n.id === id)) id = "overview";
+  if (prevId === "new" && id !== "new") UNSEEN = new Set();   // вышли из «Что нового» — просмотрено, подсветку снимаем
+  if (id === "new" && UNSEEN.size) lsSet(nowIso());              // открыли — запоминаем момент просмотра, жёлтое остаётся до выхода
+  prevId = id;
   document.querySelectorAll(".module").forEach(m => m.classList.toggle("active", m.id === "m-" + id));
   document.querySelectorAll(".navitem").forEach(a => {
     const on = a.dataset.id === id;
@@ -692,6 +781,7 @@ function route() {
   });
   const n = NAV.find(x => x.id === id);
   if (n.init && !inited[id]) { inited[id] = true; n.init(); }   // графики рисуем, когда вкладка видна
+  paint();
   document.title = `${n.t} · Health OS`;
   window.scrollTo(0, 0);
   if (focusKey) {
