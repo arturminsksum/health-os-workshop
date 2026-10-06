@@ -163,15 +163,17 @@ def _add_visit(record, doc, paths):
 
 def _refresh_status(record):
     """Короткий статус наверху страницы — переписываем после каждого нового документа."""
-    brief = {"biomarkers": [{"name": b["name"], "unit": b["unit"], "ref": b["ref"],
+    brief = {"biomarkers": [{"key": b["key"], "name": b["name"], "unit": b["unit"], "ref": b["ref"],
                              "last": b["series"][-3:]} for b in record["biomarkers"]],
              "reminders": [r for r in record["reminders"] if r.get("status") == "planned"]}
     schema = {"type": "object", "additionalProperties": False, "required": ["items"],
               "properties": {"items": {"type": "array", "items": {
-                  "type": "object", "additionalProperties": False, "required": ["level", "text"],
-                  "properties": {"level": {"type": "string", "enum": ["warn", "ok"]}, "text": {"type": "string"}}}}}}
+                  "type": "object", "additionalProperties": False, "required": ["level", "text", "markers"],
+                  "properties": {"level": {"type": "string", "enum": ["warn", "ok"]}, "text": {"type": "string"},
+                                 "markers": {"type": "array", "items": {"type": "string"}}}}}}}
     res = llm.ask("Напиши 2–4 коротких пункта статуса медкарты по-русски: что изменилось в последних анализах, "
-                  "что в норме, на что смотреть. С цифрами и годами. Без диагнозов и назначений.\n\n"
+                  "что в норме, на что смотреть. С цифрами и годами. Без диагнозов и назначений. "
+                  "В markers — ключи показателей, о которых пункт.\n\n"
                   + json.dumps(brief, ensure_ascii=False), schema=schema)
     record["tldr"] = res["items"]
 

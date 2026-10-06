@@ -62,11 +62,13 @@
   .hero h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; line-height: 1.2; }
   .hero .hm { font-size: 14.5px; opacity: .88; margin-top: 4px; }
   .tldr { display: grid; gap: 10px; }
-  .tldr .row { display: flex; align-items: flex-start; gap: 11px; padding: 12px 14px; border-radius: 10px;
+  .tldr .row { padding: 12px 14px; border-radius: 10px;
     border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); border-left: 4px solid var(--accent); }
   .tldr .row.warn { border-left-color: var(--amber); }
   .tldr .row.ok { border-left-color: var(--green); }
+  .tldr .xhead { display: flex; align-items: flex-start; gap: 11px; }
   .tldr .ic { font-size: 16px; line-height: 1.45; }
+  .tldr .tx { flex: 1; min-width: 0; }
   .tldr .tx { font-size: 15.5px; }
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   .tile { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px;
@@ -80,6 +82,7 @@
   .more { display: inline-block; margin-top: 10px; font-size: 14px; color: var(--accent); text-decoration: none; font-weight: 600; }
 
   /* анализы */
+  .bcard { scroll-margin-top: 80px; }
   .bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 14px; }
   .bhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
   .bname { font-weight: 700; font-size: 17px; }
@@ -107,6 +110,35 @@
   .sgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 14px; margin-top: 14px; }
   @media (min-width: 700px) { .sgrid .bfull { min-height: 2.8em; } }
 
+
+  /* раскрывающиеся карточки */
+  .xcard.has-x { cursor: pointer; position: relative; transition: box-shadow .15s, border-color .15s; }
+  .xcard.has-x:hover { border-color: #cfd6e4; box-shadow: 0 2px 8px rgba(16,24,40,.08); }
+  .xcard.has-x .xhead { padding-right: 24px; }
+  .xchev { position: absolute; right: 14px; top: 14px; width: 9px; height: 9px; border-right: 2px solid var(--faint);
+    border-bottom: 2px solid var(--faint); transform: rotate(45deg); transition: transform .22s; pointer-events: none; }
+  .xcard.open .xchev { transform: rotate(-135deg); top: 18px; }
+  .xwrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .28s ease; cursor: default; }
+  .xcard.open .xwrap { grid-template-rows: 1fr; }
+  .xin { overflow: hidden; min-height: 0; }
+  .xbody { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border); }
+  .xminis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+  .xmini { background: #fafbfc; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .xmini .xt { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-size: 14px; }
+  .xmini .xt b { font-size: 15px; }
+  .xmini .xv { font-weight: 700; white-space: nowrap; } .xmini .xv.ok { color: var(--green); } .xmini .xv.high, .xmini .xv.low { color: var(--red); }
+  .xmini .xs { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .xmini .chart { height: 120px; margin-top: 6px; }
+  .xlast { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .xlast span { font-size: 12.5px; padding: 2px 9px; border-radius: 20px; background: #f1f3f5; color: var(--muted); white-space: nowrap; }
+  .xlast span.ok { background: var(--green-bg); color: var(--green); } .xlast span.high, .xlast span.low { background: var(--red-bg); color: var(--red); }
+  .xlinks { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 14px; }
+  .xlinks a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .xvisit { margin-top: 12px; font-size: 14px; color: var(--muted); }
+  .xvisit a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  @keyframes flash { 0%, 60% { box-shadow: 0 0 0 3px rgba(37,99,235,.55), 0 6px 18px rgba(37,99,235,.2); } 100% { box-shadow: var(--shadow); } }
+  .bcard.flash { animation: flash 2.2s ease; }
+
   /* визиты */
   .visit { margin-bottom: 12px; border-left: 4px solid var(--accent); }
   .visit .vh { font-weight: 700; font-size: 17px; }
@@ -116,7 +148,8 @@
   .visit .rh { display: block; margin-top: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
 
   /* напоминания */
-  .rrow { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; background: var(--card);
+  .rrow .xhead { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; }
+  .rrow { background: var(--card);
     border: 1px solid var(--border); border-radius: 11px; padding: 13px 15px; margin-bottom: 10px; box-shadow: var(--shadow); border-left: 4px solid var(--faint); }
   .rrow.overdue { border-left-color: var(--red); background: var(--red-bg); }
   .rrow.soon { border-left-color: var(--amber); }
@@ -149,7 +182,9 @@
     .mtitle { font-size: 23px; }
     .hero { padding: 16px; gap: 12px; } .hero h1 { font-size: 20px; } .avatar { width: 46px; height: 46px; font-size: 18px; }
     .tile .tv { font-size: 23px; }
-    .rrow { flex-direction: column; gap: 4px; } .rrow .rd { text-align: left; }
+    .rrow .xhead { flex-direction: column; gap: 4px; } .rrow .rd { text-align: left; }
+    .xcard.has-x .xhead { padding-right: 22px; }
+    .xchev { top: 4px; }
   }
 </style>
 </head>
@@ -302,7 +337,7 @@ function renderLabs() {
     const cards = D.biomarkers.filter(b => b.group === g).map(b => {
       const last = b.series[b.series.length - 1];
       const n = b.series.length;
-      return `<div class="card bcard ${last.flag}">
+      return `<div class="card bcard ${last.flag}" id="bm-${b.key}">
         <div class="bhead">
           <div><div class="bname">${b.name}</div><div class="bfull">${b.fullName}</div></div>
           <div class="bval ${last.flag}">${last.value}<small>${b.unit}</small></div>
@@ -317,7 +352,7 @@ function renderLabs() {
     }).join("");
     return `<h3 class="gname">${g}</h3><div class="bgrid">${cards}</div>`;
   }).join("");
-  document.querySelectorAll("canvas[data-key]").forEach(c =>
+  document.querySelectorAll("#labs canvas[data-key]").forEach(c =>
     drawChart(c, D.biomarkers.find(b => b.key === c.dataset.key)));
 }
 
@@ -406,8 +441,66 @@ $("avatar").textContent = p.name.split(/\s+/).slice(0, 2).map(w => w[0]).join(""
 const nAn = D.biomarkers.reduce((s, b) => s + b.series.length, 0);
 $("meta").textContent = `${ageTxt} · ${D.biomarkers.length} показателей, ${nAn} замеров · ${D.visits.length} ${plural(D.visits.length, "визит", "визита", "визитов")} · обновлено ${fmtDate(D.generated)}`;
 
-$("tldr").innerHTML = D.tldr.map(t =>
-  `<div class="row ${t.level}"><span class="ic">${t.level === "ok" ? "✅" : t.level === "warn" ? "⚠️" : "ℹ️"}</span><span class="tx">${t.text}</span></div>`).join("");
+/* ---------- раскрывающиеся карточки: мини-графики по связанным показателям ---------- */
+const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const L = "A-Za-zА-Яа-яЁё0-9";
+function markersInText(text) {
+  const out = [];
+  D.biomarkers.forEach(b => {
+    const names = [b.name, b.fullName, b.fullName.replace(/\s*\(.*?\)\s*/g, "")].filter(Boolean);
+    if (names.some(n => new RegExp(`(^|[^${L}])${escRe(n)}($|[^${L}])`, "i").test(text))) out.push(b.key);
+  });
+  return out;
+}
+const bmByKey = k => D.biomarkers.find(b => b.key === k);
+function miniBlock(b, withLast3) {
+  const l = b.series[b.series.length - 1];
+  return `<div class="xmini">
+    <div class="xt"><b>${b.name}</b><span class="xv ${l.flag}">${l.value} ${b.unit}</span></div>
+    <div class="xs">последняя сдача: ${fmtDate(l.date)}, ${l.value} ${b.unit} · норма ${b.ref}</div>
+    <div class="chart"><canvas data-mk="${b.key}"></canvas></div>
+    ${withLast3 ? `<div class="xlast">${b.series.slice(-3).reverse().map(s => `<span class="${s.flag}">${fmtDate(s.date)}: <b>${s.value}</b></span>`).join("")}</div>` : ""}
+  </div>`;
+}
+function visitFor(r, bms) {
+  const stems = new Set();
+  [r.what, ...bms.flatMap(b => [b.name, b.fullName])].forEach(t => (t.toLowerCase().match(/[a-zа-яё]{4,}/g) || []).forEach(w => stems.add(w.slice(0, 6))));
+  return [...D.visits].sort((a, b) => b.date.localeCompare(a.date))
+    .find(v => v.recs.some(rec => [...stems].some(st => rec.toLowerCase().includes(st))));
+}
+// карточка с раскрытием: head — всегда видна, body — только если есть что показать
+function xcard(cls, head, body) {
+  if (!body) return `<div class="${cls}"><div class="xhead">${head}</div></div>`;
+  return `<div class="${cls} xcard has-x" role="button" tabindex="0" aria-expanded="false"><div class="xhead">${head}</div><span class="xchev"></span>
+    <div class="xwrap"><div class="xin"><div class="xbody">${body}</div></div></div></div>`;
+}
+function toggleX(card) {
+  const open = card.classList.toggle("open");
+  card.setAttribute("aria-expanded", open);
+  if (open && !card.dataset.drawn) {
+    card.dataset.drawn = "1";
+    card.querySelectorAll("canvas[data-mk]").forEach(c => drawChart(c, bmByKey(c.dataset.mk)));
+  }
+}
+document.addEventListener("click", e => {
+  const f = e.target.closest("[data-focus]");
+  if (f) { e.preventDefault(); focusKey = f.dataset.focus; if (location.hash === "#analyses") route(); else location.hash = "#analyses"; return; }
+  if (e.target.closest(".xbody")) return;           // клики внутри раскрытой части не сворачивают
+  const c = e.target.closest(".xcard.has-x");
+  if (c) toggleX(c);
+});
+document.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches(".xcard.has-x")) { e.preventDefault(); toggleX(e.target); }
+});
+let focusKey = null;
+
+$("tldr").innerHTML = D.tldr.map(t => {
+  const keys = (t.markers && t.markers.length ? t.markers : markersInText(t.text)).filter(bmByKey);
+  const head = `<span class="ic">${t.level === "ok" ? "✅" : t.level === "warn" ? "⚠️" : "ℹ️"}</span><span class="tx">${t.text}</span>`;
+  const body = keys.length ? `<div class="xminis">${keys.map(k => miniBlock(bmByKey(k), true)).join("")}</div>
+    <div class="xlinks">${keys.map(k => `<a href="#analyses" data-focus="${k}">Открыть в анализах${keys.length > 1 ? ": " + bmByKey(k).name : ""} →</a>`).join("")}</div>` : "";
+  return xcard(`row ${t.level}`, head, body);
+}).join("");
 
 (function renderTiles() {
   const tiles = [];
@@ -440,9 +533,13 @@ function remRow(r) {
   const { diff, overdue, soon } = remInfo(r);
   const note = overdue ? `просрочено на ${-diff} ${plural(-diff, "день", "дня", "дней")}`
     : diff === 0 ? "сегодня" : `через ${diff} ${plural(diff, "день", "дня", "дней")}`;
-  return `<div class="rrow ${overdue ? "overdue" : soon ? "soon" : ""}">
-    <div><div class="rw">${r.what}</div><div class="rwhy">${r.why}</div></div>
-    <div class="rd">срок: ${fmtDate(r.due)}<br><b>${note}</b></div></div>`;
+  const bms = (r.markers || []).map(bmByKey).filter(Boolean);
+  const v = bms.length ? visitFor(r, bms) : null;
+  const body = bms.length ? `<div class="xminis">${bms.map(b => miniBlock(b, false)).join("")}</div>` +
+    (v ? `<div class="xvisit">рекомендовал: <a href="#visits">${v.doctor}, ${fmtDate(v.date)}</a></div>` : "") : "";
+  return xcard(`rrow ${overdue ? "overdue" : soon ? "soon" : ""}`,
+    `<div><div class="rw">${r.what}</div><div class="rwhy">${r.why}</div></div>
+    <div class="rd">срок: ${fmtDate(r.due)}<br><b>${note}</b></div>`, body);
 }
 const sortedRem = [...D.reminders].sort((a, b) => a.due.localeCompare(b.due));
 $("nextRem").innerHTML = sortedRem.length ? sortedRem.filter(r => r.status === "planned").slice(0, 2).map(remRow).join("") || `<div class="empty">Запланированных нет.</div>` : `<div class="empty">Напоминаний нет.</div>`;
@@ -499,6 +596,10 @@ function route() {
   if (n.init && !inited[id]) { inited[id] = true; n.init(); }   // графики рисуем, когда вкладка видна
   document.title = `${n.t} · Health OS`;
   window.scrollTo(0, 0);
+  if (focusKey) {
+    const el = document.getElementById("bm-" + focusKey); focusKey = null;
+    if (el) setTimeout(() => { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }, 60);
+  }
 }
 window.addEventListener("hashchange", route);
 route();
