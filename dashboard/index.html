@@ -106,9 +106,17 @@
   .sumline .dot.out { background: var(--amber); }
   .hint { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
   .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-top: 12px; }
-  .legend i { display: inline-block; width: 14px; height: 9px; background: rgba(22,163,74,.2); border-radius: 2px; margin-right: 6px; }
-  .sgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 14px; margin-top: 14px; }
-  @media (min-width: 700px) { .sgrid .bfull { min-height: 2.8em; } }
+  .legend i { display: inline-block; width: 14px; height: 9px; background: rgba(22,163,74,.3); border-radius: 2px; margin-right: 6px; }
+  .sgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 14px; }
+  .sgrid .chart { height: 210px; }
+  .tiles.six { grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .tiles.six .tile { padding: 11px 12px; }
+  .tiles.six .tn { font-size: 12.5px; }
+  .tiles.six .tv { font-size: 23px; }
+  .tiles.six .tc { font-size: 12px; }
+  .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  @media (max-width: 1000px) { .tiles.six { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 759px) { .sgrid .chart { height: 190px; } }
 
 
   /* раскрывающиеся карточки */
@@ -216,10 +224,11 @@
 
     <section class="module" id="m-sleep">
       <h1 class="mtitle">Сон и восстановление</h1>
-      <div class="mdesc">Данные часов за 90 дней в сравнении с вашей обычной нормой.</div>
-      <div class="card" id="sleepSummary"></div>
+      <div class="mdesc">Данные часов за 90 дней. Сверху: последние 7 дней против вашей обычной нормы.</div>
+      <div class="tiles six" id="sleepTiles"></div>
+      <h2 class="section">Динамика за 90 дней</h2>
       <div class="sgrid" id="sleepCharts"></div>
-      <div class="legend"><span><i></i>зелёная полоса — ваша обычная норма за последние 90 дней</span></div>
+      <div class="legend" id="sleepLegend"></div>
     </section>
 
     <section class="module" id="m-visits">
@@ -366,67 +375,149 @@ function renderLabs() {
 /* ---------- сон и восстановление ---------- */
 function renderSleep() {
   const G = D.garmin;
-  if (!G || !G.days || G.days.length < 14) { $("sleepSummary").innerHTML = '<span class="empty">Данных часов нет.</span>'; return; }
-  const days = G.days, last7 = days.slice(-7);
-  const avg = k => last7.reduce((s, r) => s + r[k], 0) / last7.length;
+  if (!G || !G.days || G.days.length < 14) { $("sleepTiles").innerHTML = '<span class="empty">Данных часов нет.</span>'; return; }
+  const days = G.days, N = days.length, last7 = days.slice(-7);
   const f1 = v => v.toFixed(1).replace(".", ",");
-  const f0 = v => String(Math.round(v));
-  const rows = [
-    { k: "sleepHours", label: "Сон", unit: "ч", fmt: f1, hint: null },
-    { k: "restingHR", label: "Пульс в покое", unit: "уд/мин", fmt: f0, hint: null },
-    { k: "hrvMs", label: "Восстановление (HRV)", unit: "мс", fmt: f0, hint: "вариабельность пульса — чем выше, тем лучше восстановление" },
-  ];
-  const lines = rows.map(r => {
-    const n = G.norms[r.k], a = avg(r.k);
-    const lo = r.fmt(n.p25), hi = r.fmt(n.p75);
-    const av = Number(r.fmt(a).replace(",", ".")), nl = Number(r.fmt(n.p25).replace(",", ".")), nh = Number(r.fmt(n.p75).replace(",", "."));
-    const inside = av >= nl && av <= nh;
-    const cmp = inside ? "в вашей обычной норме" : (av < nl ? "ниже вашей обычной нормы" : "выше вашей обычной нормы");
-    return `<p class="sumline"><span class="dot ${inside ? "" : "out"}"></span>${r.label}: <b>${r.fmt(a)} ${r.unit}</b> в среднем — ${cmp} ${lo}–${hi}</p>` +
-      (r.hint ? `<div class="hint">${r.hint}</div>` : "");
-  }).join("");
-  $("sleepSummary").innerHTML = `<p class="sum"><b>Последние 7 дней</b> по сравнению с вашей обычной нормой</p>${lines}`;
+  const f0 = v => Math.round(v).toLocaleString("ru-RU");
+  const avg = (arr, k) => arr.reduce((t, r) => t + r[k], 0) / arr.length;
 
-  const charts = [
-    { k: "sleepHours", title: "Сон, часов", color: "#2563eb", step: 1 },
-    { k: "restingHR", title: "Пульс в покое, уд/мин", color: "#dc2626", step: 2 },
-    { k: "hrvMs", title: "HRV, мс", color: "#7c3aed", step: 5, note: "вариабельность пульса — чем выше, тем лучше восстановление" },
+  /* --- плитки: последние 7 дней против нормы --- */
+  const T = [
+    { k: "sleepHours", label: "Сон", unit: "ч", fmt: f1, good: 1 },
+    { k: "sleepScore", label: "Балл сна", unit: "из 100", fmt: f0, good: 1 },
+    { k: "restingHR", label: "Пульс в покое", unit: "уд/мин", fmt: f0, good: -1 },
+    { k: "hrvMs", label: "HRV", unit: "мс", fmt: f0, good: 1 },
+    { k: "bodyBatteryMorning", label: "Заряд утром", unit: "из 100", fmt: f0, good: 1 },
+    { k: "steps", label: "Шаги в день", unit: "", fmt: f0, good: 1 },
   ];
-  $("sleepCharts").innerHTML = charts.map(c => `<div class="card">
-    <div class="bname">${c.title}</div>
-    <div class="bfull">${c.note || "за 90 дней, по утрам"}</div>
-    <div class="chart sm"><canvas data-gk="${c.k}"></canvas></div></div>`).join("");
-  document.querySelectorAll("canvas[data-gk]").forEach(cv => {
-    const c = charts.find(x => x.k === cv.dataset.gk), n = G.norms[c.k];
-    const pts = days.map(r => ({ x: r.date, y: r[c.k] }));
-    const vals = pts.map(q => q.y).concat([n.p25, n.p75]);
-    new Chart(cv, {
+  $("sleepTiles").innerHTML = T.map(t => {
+    const n = G.norms[t.k], a = avg(last7, t.k), r = v => Number(v.toFixed(t.fmt === f1 ? 1 : 0));
+    const pos = r(a) < r(n.p25) ? -1 : r(a) > r(n.p75) ? 1 : 0;
+    const bad = pos !== 0 && pos !== t.good;
+    const txt = pos === 0 ? "в вашей норме" : bad ? (pos < 0 ? "ниже нормы" : "выше нормы") : "лучше нормы";
+    return `<div class="tile ${bad ? "amber" : "green"}"><div class="tn">${t.label}</div>
+      <div class="tv">${t.fmt(a)}<small>${t.unit}</small></div><div class="tc">${txt}<br><span style="white-space:nowrap">норма ${t.fmt(n.p25)}–${t.fmt(n.p75)}</span></div></div>`;
+  }).join("");
+
+  /* --- эпизод «простуда»: ≥4 дня подряд пульс в покое сильно выше нормы --- */
+  let ep = null;
+  {
+    const thr = G.norms.restingHR.p75 + 3; let st = -1;
+    for (let i = 0; i <= N; i++) {
+      const hi = i < N && days[i].restingHR >= thr;
+      if (hi && st < 0) st = i;
+      if (!hi && st >= 0) { if (i - st >= 4 && (!ep || i - st > ep.e - ep.s + 1)) ep = { s: st, e: i - 1 }; st = -1; }
+    }
+  }
+
+  /* --- плагин: полоса нормы с подписью и серая полоса эпизода --- */
+  const sleepBands = {
+    id: "sleepBands",
+    beforeDatasetsDraw(chart, _, o) {
+      const { ctx, chartArea: a, scales: { x, y } } = chart;
+      ctx.save();
+      if (o.ep) {
+        const w = (x.getPixelForValue(1) - x.getPixelForValue(0)) / 2;
+        const l = Math.max(a.left, x.getPixelForValue(o.ep.s) - w), r = Math.min(a.right, x.getPixelForValue(o.ep.e) + w);
+        ctx.fillStyle = "rgba(107,114,128,.13)"; ctx.fillRect(l, a.top, r - l, a.bottom - a.top);
+        ctx.fillStyle = "#6b7280"; ctx.font = "10.5px -apple-system, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+        ctx.fillText("простуда", (l + r) / 2, a.top + 3);
+      }
+      if (o.low != null) {
+        const top = Math.max(a.top, y.getPixelForValue(o.high)), bot = Math.min(a.bottom, y.getPixelForValue(o.low));
+        if (bot > top) {
+          ctx.fillStyle = "rgba(22,163,74,.2)"; ctx.fillRect(a.left, top, a.right - a.left, bot - top);
+          ctx.strokeStyle = "rgba(22,163,74,.5)"; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(a.left, top); ctx.lineTo(a.right, top); ctx.moveTo(a.left, bot); ctx.lineTo(a.right, bot); ctx.stroke();
+          ctx.setLineDash([]); ctx.fillStyle = "#15803d"; ctx.font = "600 10.5px -apple-system, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+          const cy = (top + bot) / 2;   // подпись справа от графика, по центру полосы
+          ctx.fillText("ваша", a.right + 5, cy - 7); ctx.fillText("норма", a.right + 5, cy + 6);
+        }
+      }
+      ctx.restore();
+    },
+  };
+  const dm = d => { const [, m, dd] = d.split("-").map(Number); return `${dd} ${MONTHS[m - 1].slice(0, 3)}`; };
+  const niceRange = (vals, zero) => {
+    let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo || 1) * 0.1; lo -= pad; hi += pad;
+    const st = hi - lo > 60 ? 10 : hi - lo > 25 ? 5 : hi - lo > 10 ? 2 : hi - lo > 4 ? 1 : 0.5;
+    return { min: zero ? 0 : Math.floor(lo / st) * st, max: Math.ceil(hi / st) * st };
+  };
+  const xAxis = labels => ({ ticks: { maxTicksLimit: 6, maxRotation: 0, autoSkip: true, callback: function (v) { return dm(labels[v]); } }, grid: { display: false } });
+  const rolling = k => days.map((_, i) => i < 6 ? null : +(days.slice(i - 6, i + 1).reduce((t, r) => t + r[k], 0) / 7).toFixed(2));
+  // недели считаем от конца: последняя — последние 7 дней
+  const wk = []; for (let e = N; e - 7 >= 0; e -= 7) wk.unshift(days.slice(e - 7, e));
+  const wLabels = wk.map(w => w[0].date);
+
+  const daily = [
+    { k: "sleepHours", title: "Сон, часов", sub: "сколько вы спали за ночь", color: "#2563eb", fmt: f1 },
+    { k: "sleepScore", title: "Балл сна", sub: "оценка качества сна по часам, от 0 до 100", color: "#0891b2", fmt: f0 },
+    { k: "restingHR", title: "Пульс в покое, уд/мин", sub: "ниже — лучше; устойчивый рост часто значит болезнь или усталость", color: "#dc2626", fmt: f0 },
+    { k: "hrvMs", title: "HRV, мс", sub: "вариабельность пульса — чем выше, тем лучше восстановление", color: "#7c3aed", fmt: f0 },
+    { k: "bodyBatteryMorning", title: "Заряд утром", sub: "Body Battery — запас сил утром по оценке часов, от 0 до 100", color: "#d97706", fmt: f0 },
+  ];
+  const weekly = [
+    { id: "sleepStages", title: "Глубокий и быстрый сон, минут", sub: "за ночь, среднее по неделям" },
+    { id: "steps", title: "Шаги", sub: "среднее за день по неделям", k: "steps", color: "#16a34a" },
+    { id: "training", title: "Тренировки, минут в неделю", sub: "сумма по неделям", k: "trainingMinutes", color: "#4f46e5" },
+  ];
+  const card = (id, t) => `<div class="card"><div class="bname">${t.title}</div><div class="bfull">${t.sub}</div><div class="chart"><canvas id="sc-${id}"></canvas></div></div>`;
+  $("sleepCharts").innerHTML = daily.map(c => card(c.k, c)).join("") + weekly.map(c => card(c.id, c)).join("");
+  const baseOpts = (labels, yr, extra) => ({
+    responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+    layout: { padding: { right: extra.sleepBands && extra.sleepBands.low != null ? 38 : 0 } },
+    plugins: { legend: { display: false }, ...extra },
+    scales: { x: xAxis(labels), y: { min: yr.min, max: yr.max, grid: { color: "#eef1f5" } } },
+  });
+
+  daily.forEach(c => {
+    const n = G.norms[c.k], vals = days.map(r => r[c.k]), roll = rolling(c.k);
+    const yr = niceRange(vals.concat([n.p25, n.p75]), false), labels = days.map(r => r.date);
+    if (c.k === "sleepScore" || c.k === "bodyBatteryMorning") yr.max = Math.min(yr.max, 100);   // шкалы 0–100
+    new Chart($("sc-" + c.k), {
       type: "line",
-      data: { labels: days.map(r => r.date), datasets: [{
-        data: pts.map(q => q.y), borderColor: c.color, borderWidth: 1.8, tension: 0.25, pointRadius: 0, pointHoverRadius: 5,
-      }] },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        interaction: { mode: "nearest", intersect: false, axis: "x" },
-        plugins: {
-          legend: { display: false },
-          refBand: { low: n.p25, high: n.p75 },
-          tooltip: { callbacks: {
-            title: it => fmtDate(days[it[0].dataIndex].date),
-            label: it => `${c.title.split(",")[0]}: ${it.parsed.y}`,
-          } },
-        },
-        scales: {
-          x: { ticks: { maxTicksLimit: 5, maxRotation: 0, autoSkip: true,
-                 callback: function (v) { const d = this.getLabelForValue(v); const [, m, dd] = d.split("-").map(Number); return `${dd} ${MONTHS[m - 1].slice(0, 3)}`; } },
-               grid: { display: false } },
-          y: { suggestedMin: Math.floor(Math.min(...vals) - 1), suggestedMax: Math.ceil(Math.max(...vals) + 1),
-               grid: { color: "#eef1f5" } },
-        },
-      },
-      plugins: [refBand],
+      data: { labels, datasets: [
+        { label: "день", data: vals, showLine: false, pointRadius: 2.2, pointHoverRadius: 4, backgroundColor: c.color + "55", borderColor: c.color + "55" },
+        { label: "среднее за 7 дней", data: roll, borderColor: c.color, borderWidth: 3, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, spanGaps: false },
+      ] },
+      options: baseOpts(labels, yr, { sleepBands: { low: n.p25, high: n.p75, ep }, tooltip: { callbacks: {
+        title: it => fmtDate(labels[it[0].dataIndex]),
+        label: it => it.parsed.y == null ? null : `${it.dataset.label === "день" ? "за день" : "среднее за 7 дней"}: ${c.fmt(it.parsed.y)}`,
+      } } }),
+      plugins: [sleepBands],
     });
   });
+
+  // глубокий + быстрый сон по неделям
+  {
+    const dp = wk.map(w => avg(w, "deepSleepMin")), rm = wk.map(w => avg(w, "remSleepMin"));
+    new Chart($("sc-sleepStages"), {
+      type: "line",
+      data: { labels: wLabels, datasets: [
+        { label: "глубокий", data: dp, borderColor: "#1d4ed8", backgroundColor: "#1d4ed8", borderWidth: 2.5, tension: 0.3, pointRadius: 3 },
+        { label: "быстрый (REM)", data: rm, borderColor: "#a855f7", backgroundColor: "#a855f7", borderWidth: 2.5, tension: 0.3, pointRadius: 3 },
+      ] },
+      options: { ...baseOpts(wLabels, niceRange(dp.concat(rm), false), { tooltip: { callbacks: {
+        title: it => `неделя с ${fmtDate(wLabels[it[0].dataIndex])}`, label: it => `${it.dataset.label}: ${f0(it.parsed.y)} мин` } },
+        legend: { display: true, position: "bottom", labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, font: { size: 11.5 } } } }) },
+    });
+  }
+  // шаги и тренировки — столбики по неделям
+  const bars = (id, vals, color, unit, band) => new Chart($("sc-" + id), {
+    type: "bar",
+    data: { labels: wLabels, datasets: [{ data: vals, backgroundColor: color + "cc", borderRadius: 4, maxBarThickness: 26 }] },
+    options: baseOpts(wLabels, niceRange(vals.concat(band ? [0, band.p75] : [0]), true), { sleepBands: band ? { low: band.p25, high: band.p75 } : {}, tooltip: { callbacks: {
+      title: it => `неделя с ${fmtDate(wLabels[it[0].dataIndex])}`, label: it => `${f0(it.parsed.y)} ${unit}` } } }),
+    plugins: [sleepBands],
+  });
+  bars("steps", wk.map(w => avg(w, "steps")), "#16a34a", "шагов в день", G.norms.steps);
+  bars("training", wk.map(w => w.reduce((t, r) => t + r.trainingMinutes, 0)), "#4f46e5", "мин за неделю", null);
+
+  $("sleepLegend").innerHTML =
+    `<span><span class="sw" style="background:#2563eb55"></span>точки — отдельные дни</span>` +
+    `<span><b style="color:#2563eb">━</b> жирная линия — среднее за 7 дней</span>` +
+    `<span><i></i>зелёная полоса — ваша обычная норма (середина значений за 90 дней)</span>` +
+    (ep ? `<span><i style="background:rgba(107,114,128,.25)"></i>серая полоса — вероятная простуда: ${fmtDate(days[ep.s].date)} – ${fmtDate(days[ep.e].date)}, пульс в покое был заметно выше нормы</span>` : "");
 }
 
 /* ---------- общие данные ---------- */
