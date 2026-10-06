@@ -2,6 +2,8 @@
 """Запуск Health OS.
 
   python3 run.py                    — страница медкарты + Telegram-бот (обычный режим)
+  python3 run.py web                — только страница
+  python3 run.py bot                — только бот
   python3 run.py check              — проверить настройки: ключ, бот, порт
   python3 run.py ask "вопрос"       — спросить по медкарте без Telegram
   python3 run.py add файл [файл…]   — добавить анализ или заключение без Telegram
@@ -63,10 +65,15 @@ def main():
     if args[:1] == ["add"]:
         import medcard
         return print(medcard.ingest(args[1:]))
-    import bot
     import medcard
-    import web
     medcard.rebuild_page()
+    if args[:1] == ["web"]:  # только страница (на общем сервере она запущена всегда)
+        import web
+        return web.serve()
+    import bot
+    if args[:1] == ["bot"]:  # только бот
+        return bot.run()
+    import web
     threading.Thread(target=web.serve, daemon=True).start()
     bot.run()
     if not config.TELEGRAM_BOT_TOKEN:  # без бота держим работающей хотя бы страницу
