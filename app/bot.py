@@ -163,8 +163,9 @@ def reminder_loop():
 
 # ---------- сообщения ----------
 
-def handle_files(chat_id, files):
-    work = Working(chat_id, f"📄 Принял {len(files)} файл(а), читаю документ — секунд 10…")
+def handle_files(chat_id, files, work):
+    if len(files) > 1:
+        work.update(f"📄 Получил {len(files)} файла одного документа, читаю — секунд 10–20…")
     try:
         reply = medcard.ingest(files)
         if config.PUBLIC_URL:
@@ -193,13 +194,16 @@ def handle(msg, albums):
     if text in (BTN_REMIND, "/remind"):
         return remind(chat_id, manual=True)
     if "photo" in msg or "document" in msg:
+        group = msg.get("media_group_id")
+        key = group or f"single-{msg['message_id']}"
+        if key not in albums:  # отвечаем сразу, ещё до скачивания — человек видит, что файл дошёл
+            albums[key] = {"chat": chat_id, "files": [], "at": time.time(), "single": not group,
+                           "work": Working(chat_id, "📄 Получил, читаю документ — секунд 10–20…")}
         if "photo" in msg:
             path = download(msg["photo"][-1]["file_id"], f"photo-{msg['message_id']}.jpg")
         else:
             doc = msg["document"]
             path = download(doc["file_id"], doc.get("file_name") or f"file-{msg['message_id']}")
-        key = msg.get("media_group_id") or f"single-{msg['message_id']}"
-        albums.setdefault(key, {"chat": chat_id, "files": [], "at": time.time()})
         albums[key]["files"].append(path)
         albums[key]["at"] = time.time()
         return
@@ -222,6 +226,12 @@ class Working:
             except Exception:
                 pass
             self.done.wait(4)
+
+    def update(self, text):
+        try:
+            call("editMessageText", chat_id=self.chat_id, message_id=self.msg_id, text=text)
+        except Exception:
+            pass
 
     def finish(self):
         self.done.set()
@@ -280,6 +290,7 @@ def run():
                     handle(u["message"], albums)
                 except Exception as e:
                     print("ошибка обработки:", e)
-        for key in [k for k, a in albums.items() if time.time() - a["at"] > ALBUM_WAIT]:
+        # одиночный файл — в работу сразу; альбом скринов — когда 3 с не приходит новых частей
+        for key in [k for k, a in albums.items() if a["single"] or time.time() - a["at"] > ALBUM_WAIT]:
             a = albums.pop(key)
-            threading.Thread(target=handle_files, args=(a["chat"], a["files"]), daemon=True).start()
+            threading.Thread(target=handle_files, args=(a["chat"], a["files"], a["work"]), daemon=True).start()
