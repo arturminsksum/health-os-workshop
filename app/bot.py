@@ -85,11 +85,32 @@ def is_owner(chat_id):
     return current == str(chat_id)
 
 
-HELP = ("Я — доктор твоей медкарты.\n"
-        "• Спроси текстом: «как менялся мой холестерин?», «как я спал на этой неделе?»\n"
-        "• Пришли фото, скриншот или PDF анализа или заключения врача — разберу и добавлю в карту.\n"
-        "• /page — пришлю страницу медкарты одним файлом\n"
-        "• /remind — проверю напоминания прямо сейчас")
+BTN_PAGE, BTN_REMIND, BTN_HELP = "📊 Моя медкарта", "⏰ Что пересдать", "❓ Что умеет бот"
+# кнопки под полем ввода — ничего не нужно помнить
+KEYBOARD = json.dumps({"keyboard": [[{"text": BTN_PAGE}, {"text": BTN_REMIND}], [{"text": BTN_HELP}]],
+                       "resize_keyboard": True, "is_persistent": True})
+COMMANDS = [("medcard", "Моя медкарта — ссылка на страницу с графиками"),
+            ("remind", "Что пора пересдать"),
+            ("help", "Что умеет бот")]
+
+HELP = ("Я — доктор твоей медкарты. Что умею:\n\n"
+        "💬 Отвечаю на вопросы — просто напиши: «как менялся мой холестерин?», «как я спал на этой неделе?»\n\n"
+        "📄 Добавляю анализы — пришли фото, скриншот или PDF анализа или заключения врача. "
+        "Несколько скринов одного анализа присылай одним сообщением.\n\n"
+        "📊 Кнопка «Моя медкарта» — страница с графиками.\n"
+        "⏰ Кнопка «Что пересдать» — сроки пересдачи анализов. Ещё я сам напомню утром, когда срок подойдёт.")
+
+
+def send_menu(chat_id, text):
+    call("sendMessage", chat_id=chat_id, text=text, reply_markup=KEYBOARD)
+
+
+def send_medcard(chat_id):
+    if config.PUBLIC_URL:
+        send_menu(chat_id, f"📊 Твоя медкарта с графиками:\n{config.PUBLIC_URL}\n\nПароль — тот же, что для входа на страницу.")
+    else:
+        medcard.rebuild_page()
+        send_document(chat_id, config.PAGE, "📊 Вся медкарта одним файлом — открой, работает без интернета.")
 
 
 # ---------- напоминания ----------
@@ -110,9 +131,9 @@ def due_reminders(days_ahead=None):
 def remind(chat_id, manual=False):
     items = due_reminders()
     if items:
-        send(chat_id, "Пора пересдать:\n" + "\n".join(items))
+        send(chat_id, "⏰ Пора пересдать:\n" + "\n".join(items))
     elif manual:
-        send(chat_id, f"Ближайшие {config.REMIND_DAYS_AHEAD} дней ничего пересдавать не нужно.")
+        send(chat_id, f"✅ Ближайшие {config.REMIND_DAYS_AHEAD} дней ничего пересдавать не нужно.")
 
 
 def reminder_loop():
@@ -148,17 +169,16 @@ def handle(msg, albums):
     text = msg.get("text", "")
     if text.startswith("/start"):
         if is_owner(chat_id):
-            send(chat_id, HELP)
+            send_menu(chat_id, HELP)
         return
     if not is_owner(chat_id):
         return
-    if text.startswith("/page"):
-        medcard.rebuild_page()
-        send_document(chat_id, config.PAGE, "Открой файл — это вся медкарта, работает без интернета.")
-        return
-    if text.startswith("/remind"):
-        remind(chat_id, manual=True)
-        return
+    if text in (BTN_HELP, "/help"):
+        return send_menu(chat_id, HELP)
+    if text in (BTN_PAGE, "/medcard", "/page"):
+        return send_medcard(chat_id)
+    if text in (BTN_REMIND, "/remind"):
+        return remind(chat_id, manual=True)
     if "photo" in msg or "document" in msg:
         if "photo" in msg:
             path = download(msg["photo"][-1]["file_id"], f"photo-{msg['message_id']}.jpg")
@@ -229,6 +249,7 @@ def run():
         return
     threading.Thread(target=reminder_loop, daemon=True).start()
     me = call("getMe")
+    call("setMyCommands", commands=json.dumps([{"command": c, "description": d} for c, d in COMMANDS]))
     print(f"Бот @{me['username']} запущен. Напиши ему /start в Telegram.")
     offset, albums = None, {}
     while True:
