@@ -3,36 +3,81 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Карта здоровья</title>
+<title>Health OS — личная карта здоровья</title>
 <script src="chart.umd.min.js"></script>
 <script src="data.js"></script>
 <style>
   :root {
     --bg: #f4f6f9; --card: #fff; --border: #e6e9ef; --ink: #1f2937; --muted: #6b7280; --faint: #9ca3af;
     --green: #16a34a; --amber: #d97706; --red: #dc2626;
-    --green-bg: #ecfdf5; --amber-bg: #fffbeb; --red-bg: #fef2f2; --accent: #2563eb;
+    --green-bg: #ecfdf5; --amber-bg: #fffbeb; --red-bg: #fef2f2; --accent: #2563eb; --accent-bg: #eff4ff;
     --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--ink); overflow-wrap: anywhere;
-    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  .wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
+  body { margin: 0; background: var(--bg); color: var(--ink); overflow-wrap: anywhere; overflow-x: hidden;
+    font: 16.5px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; }
 
-  header { margin-bottom: 8px; }
-  header h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
-  header .meta { color: var(--muted); font-size: 15px; margin-top: 4px; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint);
-    margin: 32px 0 12px; font-weight: 700; }
-  h3 { margin: 22px 0 10px; font-size: 18px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    box-shadow: var(--shadow); padding: 14px 16px; }
+  /* оболочка */
+  .app { display: flex; min-height: 100vh; align-items: flex-start; }
+  .sidebar { width: 244px; flex: none; background: var(--card); border-right: 1px solid var(--border);
+    padding: 20px 12px 28px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .brand { padding: 4px 10px 8px; }
+  .brand .bt { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+  .brand .bt span { color: var(--accent); }
+  .brand .bs { font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+  .navgrp { margin-top: 16px; }
+  .navgrp .gt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); padding: 0 10px 6px; font-weight: 700; }
+  .navitem { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--ink);
+    font-size: 15.5px; font-weight: 500; text-decoration: none; width: 100%; margin-bottom: 1px; }
+  .navitem:hover { background: #f3f4f6; }
+  .navitem.active { background: var(--accent-bg); color: var(--accent); font-weight: 650; }
+  .ni-ic { width: 20px; text-align: center; font-size: 15px; flex: none; }
+  .ni-tx { flex: 1; min-width: 0; }
+  .ni-b { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 20px; flex: none; }
+  .ni-b.red { color: var(--red); background: var(--red-bg); }
+  .ni-b.amber { color: var(--amber); background: var(--amber-bg); }
+  .ni-b.grey { color: var(--muted); background: #f1f3f5; }
+  .sidefoot { margin: 22px 10px 0; font-size: 11.5px; color: var(--faint); line-height: 1.5; }
 
-  /* статус */
-  .status { display: grid; gap: 10px; }
-  .status .card { border-left: 4px solid var(--accent); }
-  .status .warn { border-left-color: var(--amber); background: var(--amber-bg); }
-  .status .ok { border-left-color: var(--green); background: var(--green-bg); }
+  .main { flex: 1; min-width: 0; }
+  .content { max-width: 940px; margin: 0 auto; padding: 32px 30px 72px; }
+  .module { display: none; }
+  .module.active { display: block; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  .mtitle { font-size: 28px; margin: 0 0 5px; letter-spacing: -.02em; font-weight: 700; }
+  .mdesc { color: var(--muted); font-size: 15.5px; margin: 0 0 22px; }
+  h2.section { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin: 30px 0 14px; font-weight: 600; }
+  h2.section.first { margin-top: 4px; }
+  h3.gname { margin: 26px 0 12px; font-size: 18px; }
+  h3.gname:first-child { margin-top: 4px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 15px 17px; }
+
+  /* обзор */
+  .hero { display: flex; gap: 16px; align-items: center; background: linear-gradient(120deg, #2563eb, #4f46e5);
+    color: #fff; border-radius: 16px; padding: 20px 22px; margin-bottom: 8px; box-shadow: 0 6px 20px rgba(37,99,235,.22); }
+  .avatar { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,.2); display: flex;
+    align-items: center; justify-content: center; font-size: 22px; font-weight: 700; flex: none; }
+  .hero h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; line-height: 1.2; }
+  .hero .hm { font-size: 14.5px; opacity: .88; margin-top: 4px; }
+  .tldr { display: grid; gap: 10px; }
+  .tldr .row { display: flex; align-items: flex-start; gap: 11px; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); border-left: 4px solid var(--accent); }
+  .tldr .row.warn { border-left-color: var(--amber); }
+  .tldr .row.ok { border-left-color: var(--green); }
+  .tldr .ic { font-size: 16px; line-height: 1.45; }
+  .tldr .tx { font-size: 15.5px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .tile { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px;
+    box-shadow: var(--shadow); border-top: 4px solid var(--faint); text-decoration: none; color: var(--ink); display: block; }
+  .tile.green { border-top-color: var(--green); } .tile.amber { border-top-color: var(--amber); } .tile.red { border-top-color: var(--red); }
+  .tile .tn { font-size: 13.5px; color: var(--muted); font-weight: 600; }
+  .tile .tv { font-size: 27px; font-weight: 750; margin-top: 3px; letter-spacing: -.02em; white-space: nowrap; }
+  .tile .tv small { font-size: 12.5px; font-weight: 500; color: var(--faint); margin-left: 3px; letter-spacing: 0; }
+  .tile.green .tv { color: var(--green); } .tile.amber .tv { color: var(--amber); } .tile.red .tv { color: var(--red); }
+  .tile .tc { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .more { display: inline-block; margin-top: 10px; font-size: 14px; color: var(--accent); text-decoration: none; font-weight: 600; }
 
   /* анализы */
   .bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 14px; }
@@ -41,90 +86,127 @@
   .bfull { color: var(--muted); font-size: 13px; }
   .bval { font-size: 24px; font-weight: 700; text-align: right; white-space: nowrap; }
   .bval small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 3px; }
-  .bval.high, .bval.low { color: var(--red); }
-  .bval.ok { color: var(--green); }
-  .bsub { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-    color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+  .bval.high, .bval.low { color: var(--red); } .bval.ok { color: var(--green); }
+  .bsub { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 13.5px; margin-top: 4px; }
   .badge { font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 20px; }
   .badge.high, .badge.low { color: var(--red); background: var(--red-bg); }
   .badge.ok { color: var(--green); background: var(--green-bg); }
+  .bcard { border-left: 4px solid var(--green); }
+  .bcard.high, .bcard.low { border-left-color: var(--red); }
   .chart { position: relative; height: 190px; margin-top: 10px; }
+  .chart.sm { height: 170px; }
 
-  /* визиты */
-  .visit { margin-bottom: 12px; }
-  .visit .vh { font-weight: 700; }
-  .visit .vs { color: var(--muted); font-size: 14px; }
-  .visit p { margin: 8px 0 0; }
-  .visit ul { margin: 6px 0 0; padding-left: 20px; }
-  .visit li { margin: 3px 0; }
-
-  /* напоминания */
-  .rem { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
-  .rem .rw { font-weight: 700; }
-  .rem .rwhy { color: var(--muted); font-size: 14px; }
-  .rem .rd { text-align: right; flex: none; font-size: 14px; }
-  .rem.overdue { border-left: 4px solid var(--red); background: var(--red-bg); }
-  .rem.overdue .rd b { color: var(--red); }
-
-  /* профиль */
-  .prof dt { color: var(--muted); font-size: 13px; margin-top: 10px; }
-  .prof dt:first-child { margin-top: 0; }
-  .prof dd { margin: 2px 0 0; }
-  .prof ul { margin: 2px 0 0; padding-left: 20px; }
-
-  /* сон и восстановление */
+  /* сон */
   .sum { font-size: 17px; margin: 0 0 4px; }
-  .sum b.ok { color: var(--green); } .sum b.out { color: var(--amber); }
   .sumline { margin: 6px 0 0; font-size: 15px; }
   .sumline .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; background: var(--green); }
   .sumline .dot.out { background: var(--amber); }
   .hint { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-top: 12px; }
   .legend i { display: inline-block; width: 14px; height: 9px; background: rgba(22,163,74,.2); border-radius: 2px; margin-right: 6px; }
   .sgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 14px; margin-top: 14px; }
   @media (min-width: 700px) { .sgrid .bfull { min-height: 2.8em; } }
-  .chart.sm { height: 170px; }
 
+  /* визиты */
+  .visit { margin-bottom: 12px; border-left: 4px solid var(--accent); }
+  .visit .vh { font-weight: 700; font-size: 17px; }
+  .visit .vs { color: var(--muted); font-size: 14px; }
+  .visit p { margin: 8px 0 0; }
+  .visit ul { margin: 6px 0 0; padding-left: 20px; } .visit li { margin: 3px 0; }
+  .visit .rh { display: block; margin-top: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+
+  /* напоминания */
+  .rrow { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; background: var(--card);
+    border: 1px solid var(--border); border-radius: 11px; padding: 13px 15px; margin-bottom: 10px; box-shadow: var(--shadow); border-left: 4px solid var(--faint); }
+  .rrow.overdue { border-left-color: var(--red); background: var(--red-bg); }
+  .rrow.soon { border-left-color: var(--amber); }
+  .rrow .rw { font-weight: 700; font-size: 16.5px; } .rrow .rwhy { color: var(--muted); font-size: 14.5px; margin-top: 2px; }
+  .rrow .rd { text-align: right; flex: none; font-size: 14px; color: var(--muted); }
+  .rrow.overdue .rd b { color: var(--red); } .rrow.soon .rd b { color: var(--amber); }
+
+  /* профиль */
+  .profile { padding: 18px 20px; }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px 26px; }
+  .lbl { font-size: 12px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+  .pv { font-size: 16.5px; margin-top: 2px; }
+  .psections { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px 26px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .psec ul { margin: 6px 0 0; padding-left: 18px; } .psec li { margin: 3px 0; font-size: 15px; }
   .empty { color: var(--muted); }
-  footer { margin-top: 36px; color: var(--faint); font-size: 13px; text-align: center; }
-  @media (max-width: 480px) {
-    header h1 { font-size: 22px; }
-    .bval { font-size: 22px; }
-    .rem { flex-direction: column; gap: 4px; }
-    .rem .rd { text-align: left; }
+  footer { margin-top: 40px; color: var(--faint); font-size: 12.5px; }
+
+  @media (max-width: 1000px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 759px) {
+    .app { flex-direction: column; align-items: stretch; }
+    .sidebar { width: 100%; height: auto; position: sticky; top: 0; z-index: 20; border-right: none;
+      border-bottom: 1px solid var(--border); padding: 10px 0 8px; overflow: visible; }
+    .brand { padding: 0 14px 6px; display: flex; align-items: baseline; gap: 10px; }
+    .brand .bs, .sidefoot, .navgrp .gt { display: none; }
+    .navgrp { margin: 0; display: flex; gap: 6px; overflow-x: auto; padding: 2px 14px 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .navgrp::-webkit-scrollbar { display: none; }
+    .navitem { width: auto; flex: none; white-space: nowrap; font-size: 14px; padding: 7px 11px; background: #f3f4f6; border-radius: 20px; margin: 0; }
+    .navitem.active { background: var(--accent-bg); }
+    .content { padding: 20px 14px 56px; }
+    .mtitle { font-size: 23px; }
+    .hero { padding: 16px; gap: 12px; } .hero h1 { font-size: 20px; } .avatar { width: 46px; height: 46px; font-size: 18px; }
+    .tile .tv { font-size: 23px; }
+    .rrow { flex-direction: column; gap: 4px; } .rrow .rd { text-align: left; }
   }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1 id="name"></h1>
-    <div class="meta" id="meta"></div>
-  </header>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="bt">Health <span>OS</span></div><div class="bs">личная карта здоровья</div></div>
+    <nav id="nav"></nav>
+    <div class="sidefoot">Учебный проект.<br>Все данные вымышленные.</div>
+  </aside>
+  <main class="main"><div class="content">
 
-  <h2>Статус</h2>
-  <div class="status" id="status"></div>
+    <section class="module" id="m-overview">
+      <div class="hero"><div class="avatar" id="avatar"></div><div><h1 id="name"></h1><div class="hm" id="meta"></div></div></div>
+      <h2 class="section">Ключевые цифры</h2>
+      <div class="tiles" id="tiles"></div>
+      <h2 class="section">Статус: на что смотреть</h2>
+      <div class="tldr" id="tldr"></div>
+      <h2 class="section">Ближайшие напоминания</h2>
+      <div id="nextRem"></div>
+      <a class="more" href="#reminders">Все напоминания →</a>
+    </section>
 
-  <h2>Анализы</h2>
-  <div id="labs"></div>
+    <section class="module" id="m-analyses">
+      <h1 class="mtitle">Анализы</h1>
+      <div class="mdesc">Лабораторные показатели во времени. Зелёная полоса на графике — референсная норма.</div>
+      <div id="labs"></div>
+    </section>
 
-  <div id="sleepSection" hidden>
-    <h2>Сон и восстановление</h2>
-    <div class="card" id="sleepSummary"></div>
-    <div class="sgrid" id="sleepCharts"></div>
-    <div class="legend"><span><i></i>зелёная полоса — ваша обычная норма за последние 90 дней</span></div>
-  </div>
+    <section class="module" id="m-sleep">
+      <h1 class="mtitle">Сон и восстановление</h1>
+      <div class="mdesc">Данные часов за 90 дней в сравнении с вашей обычной нормой.</div>
+      <div class="card" id="sleepSummary"></div>
+      <div class="sgrid" id="sleepCharts"></div>
+      <div class="legend"><span><i></i>зелёная полоса — ваша обычная норма за последние 90 дней</span></div>
+    </section>
 
-  <h2>Визиты к врачам</h2>
-  <div id="visits"></div>
+    <section class="module" id="m-visits">
+      <h1 class="mtitle">Визиты к врачам</h1>
+      <div class="mdesc">Новые сверху: диагноз, находки и рекомендации.</div>
+      <div id="visits"></div>
+    </section>
 
-  <h2>Напоминания</h2>
-  <div id="reminders"></div>
+    <section class="module" id="m-reminders">
+      <h1 class="mtitle">Напоминания</h1>
+      <div class="mdesc">Что пора проверить. Просрочки считаются от сегодняшней даты.</div>
+      <div id="reminders"></div>
+    </section>
 
-  <h2>Профиль</h2>
-  <div class="card prof" id="profile"></div>
+    <section class="module" id="m-profile">
+      <h1 class="mtitle">Профиль</h1>
+      <div class="mdesc">Контекст, с которым читаются все цифры.</div>
+      <div class="card profile" id="profile"></div>
+    </section>
 
-  <footer>Учебный проект. Все данные вымышленные.</footer>
+    <footer>Учебный проект. Все данные вымышленные.</footer>
+  </div></main>
 </div>
 
 <script>
@@ -161,16 +243,6 @@ const list = items => items.length ? `<ul>${items.map(i => `<li>${i}</li>`).join
 
 const today = new Date();
 const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-/* ---------- шапка ---------- */
-const p = D.profile;
-const age = ageYears(p.birth, today);
-$("name").textContent = p.name;
-$("meta").textContent = `${age} ${plural(age, "год", "года", "лет")} · данные на ${fmtDate(D.generated)}`;
-
-/* ---------- статус ---------- */
-$("status").innerHTML = D.tldr.map(t =>
-  `<div class="card ${t.level}">${t.text}</div>`).join("");
 
 /* ---------- анализы ---------- */
 // плагин: закрашивает референсный диапазон (low..high) на графике
@@ -224,13 +296,13 @@ function drawChart(canvas, b) {
   });
 }
 
-(function renderLabs() {
+function renderLabs() {
   const groups = [...new Set(D.biomarkers.map(b => b.group))];
   $("labs").innerHTML = groups.map(g => {
     const cards = D.biomarkers.filter(b => b.group === g).map(b => {
       const last = b.series[b.series.length - 1];
       const n = b.series.length;
-      return `<div class="card">
+      return `<div class="card bcard ${last.flag}">
         <div class="bhead">
           <div><div class="bname">${b.name}</div><div class="bfull">${b.fullName}</div></div>
           <div class="bval ${last.flag}">${last.value}<small>${b.unit}</small></div>
@@ -243,17 +315,16 @@ function drawChart(canvas, b) {
         <div class="chart"><canvas data-key="${b.key}"></canvas></div>
       </div>`;
     }).join("");
-    return `<h3>${g}</h3><div class="bgrid">${cards}</div>`;
+    return `<h3 class="gname">${g}</h3><div class="bgrid">${cards}</div>`;
   }).join("");
   document.querySelectorAll("canvas[data-key]").forEach(c =>
     drawChart(c, D.biomarkers.find(b => b.key === c.dataset.key)));
-})();
+}
 
 /* ---------- сон и восстановление ---------- */
-(function renderSleep() {
+function renderSleep() {
   const G = D.garmin;
-  if (!G || !G.days || G.days.length < 14) return;
-  $("sleepSection").hidden = false;
+  if (!G || !G.days || G.days.length < 14) { $("sleepSummary").innerHTML = '<span class="empty">Данных часов нет.</span>'; return; }
   const days = G.days, last7 = days.slice(-7);
   const avg = k => last7.reduce((s, r) => s + r[k], 0) / last7.length;
   const f1 = v => v.toFixed(1).replace(".", ",");
@@ -314,7 +385,67 @@ function drawChart(canvas, b) {
       plugins: [refBand],
     });
   });
+}
+
+/* ---------- общие данные ---------- */
+const p = D.profile;
+const age = ageYears(p.birth, today);
+const ageTxt = `${age} ${plural(age, "год", "года", "лет")}`;
+const DAY = 86400000;
+const G = D.garmin && D.garmin.days && D.garmin.days.length >= 14 ? D.garmin : null;
+const remInfo = r => {
+  const diff = Math.round((new Date(r.due + "T00:00:00") - new Date(todayIso + "T00:00:00")) / DAY); // дней до срока
+  return { diff, overdue: diff < 0, soon: diff >= 0 && diff <= 30 };
+};
+const remAttention = D.reminders.filter(r => r.status === "planned" && (remInfo(r).overdue || remInfo(r).soon));
+const remOverdueCnt = D.reminders.filter(r => r.status === "planned" && remInfo(r).overdue).length;
+
+/* ---------- обзор ---------- */
+$("name").textContent = p.name;
+$("avatar").textContent = p.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("");
+const nAn = D.biomarkers.reduce((s, b) => s + b.series.length, 0);
+$("meta").textContent = `${ageTxt} · ${D.biomarkers.length} показателей, ${nAn} замеров · ${D.visits.length} ${plural(D.visits.length, "визит", "визита", "визитов")} · обновлено ${fmtDate(D.generated)}`;
+
+$("tldr").innerHTML = D.tldr.map(t =>
+  `<div class="row ${t.level}"><span class="ic">${t.level === "ok" ? "✅" : t.level === "warn" ? "⚠️" : "ℹ️"}</span><span class="tx">${t.text}</span></div>`).join("");
+
+(function renderTiles() {
+  const tiles = [];
+  const bm = (key, label) => {
+    const b = D.biomarkers.find(x => x.key === key);
+    if (!b) return;
+    const l = b.series[b.series.length - 1];
+    tiles.push({ label, val: String(l.value), unit: b.unit, cls: l.flag === "ok" ? "green" : "red",
+      cap: `${FLAG_RU[l.flag]} · норма ${b.ref} · ${fmtDate(l.date)}`, href: "#analyses" });
+  };
+  bm("ldl", "LDL"); bm("vitd", "Витамин D");
+  if (G) {
+    const last7 = G.days.slice(-7);
+    const avg = k => last7.reduce((s, r) => s + r[k], 0) / last7.length;
+    const mk = (k, label, unit, dig) => {
+      const a = avg(k), n = G.norms[k], r = v => Number(v.toFixed(dig));
+      const inside = r(a) >= r(n.p25) && r(a) <= r(n.p75);
+      const s = dig ? r(a).toFixed(1).replace(".", ",") : String(Math.round(a));
+      tiles.push({ label, val: s, unit, cls: inside ? "green" : "amber",
+        cap: inside ? "в вашей норме" : (a < n.p25 ? "ниже вашей нормы" : "выше вашей нормы"), href: "#sleep" });
+    };
+    mk("sleepHours", "Сон, 7 дней", "ч", 1);
+    mk("restingHR", "Пульс в покое", "уд/мин", 0);
+  }
+  $("tiles").innerHTML = tiles.map(t => `<a class="tile ${t.cls}" href="${t.href}">
+    <div class="tn">${t.label}</div><div class="tv">${t.val}<small>${t.unit}</small></div><div class="tc">${t.cap}</div></a>`).join("");
 })();
+
+function remRow(r) {
+  const { diff, overdue, soon } = remInfo(r);
+  const note = overdue ? `просрочено на ${-diff} ${plural(-diff, "день", "дня", "дней")}`
+    : diff === 0 ? "сегодня" : `через ${diff} ${plural(diff, "день", "дня", "дней")}`;
+  return `<div class="rrow ${overdue ? "overdue" : soon ? "soon" : ""}">
+    <div><div class="rw">${r.what}</div><div class="rwhy">${r.why}</div></div>
+    <div class="rd">срок: ${fmtDate(r.due)}<br><b>${note}</b></div></div>`;
+}
+const sortedRem = [...D.reminders].sort((a, b) => a.due.localeCompare(b.due));
+$("nextRem").innerHTML = sortedRem.length ? sortedRem.filter(r => r.status === "planned").slice(0, 2).map(remRow).join("") || `<div class="empty">Запланированных нет.</div>` : `<div class="empty">Напоминаний нет.</div>`;
 
 /* ---------- визиты ---------- */
 $("visits").innerHTML = D.visits.length ? [...D.visits].sort((a, b) => b.date.localeCompare(a.date)).map(v => `
@@ -322,27 +453,55 @@ $("visits").innerHTML = D.visits.length ? [...D.visits].sort((a, b) => b.date.lo
     <div class="vh">${v.diagnosis}</div>
     <div class="vs">${fmtDate(v.date)} · ${v.doctor} · ${v.clinic}</div>
     <p>${v.findings}</p>
-    <b style="display:block;margin-top:10px">Рекомендации</b>${list(v.recs)}
+    <b class="rh">Рекомендации</b>${list(v.recs)}
   </div>`).join("") : `<div class="empty">Визитов пока нет.</div>`;
 
 /* ---------- напоминания ---------- */
-const DAY = 86400000;
-$("reminders").innerHTML = D.reminders.length ? [...D.reminders].sort((a, b) => a.due.localeCompare(b.due)).map(r => {
-  const overdue = r.due < todayIso;
-  const days = Math.round((new Date(todayIso) - new Date(r.due)) / DAY);
-  const note = overdue ? `просрочено на ${days} ${plural(days, "день", "дня", "дней")}` : "запланировано";
-  return `<div class="card rem ${overdue ? "overdue" : ""}">
-    <div><div class="rw">${r.what}</div><div class="rwhy">${r.why}</div></div>
-    <div class="rd">срок: ${fmtDate(r.due)}<br><b>${note}</b></div>
-  </div>`;
-}).join("") : `<div class="empty">Напоминаний нет.</div>`;
+$("reminders").innerHTML = sortedRem.length ? sortedRem.map(remRow).join("") : `<div class="empty">Напоминаний нет.</div>`;
 
 /* ---------- профиль ---------- */
-$("profile").innerHTML = `<dl style="margin:0">
-  <dt>Дата рождения</dt><dd>${fmtDate(p.birth)} (${age} ${plural(age, "год", "года", "лет")}), пол: ${p.sex}</dd>
-  <dt>Диагнозы</dt><dd>${list(p.diagnoses)}</dd>
-  <dt>Препараты</dt><dd>${list(p.meds)}</dd>
-  <dt>Заметки</dt><dd>${list(p.notes)}</dd></dl>`;
+$("profile").innerHTML = `
+  <div class="pgrid">
+    <div><div class="lbl">Имя</div><div class="pv">${p.name}</div></div>
+    <div><div class="lbl">Дата рождения</div><div class="pv">${fmtDate(p.birth)}</div></div>
+    <div><div class="lbl">Возраст</div><div class="pv">${ageTxt}</div></div>
+    <div><div class="lbl">Пол</div><div class="pv">${p.sex}</div></div>
+  </div>
+  <div class="psections">
+    <div class="psec"><div class="lbl">Диагнозы</div>${list(p.diagnoses)}</div>
+    <div class="psec"><div class="lbl">Препараты</div>${list(p.meds)}</div>
+    <div class="psec"><div class="lbl">Заметки</div>${list(p.notes)}</div>
+  </div>`;
+
+/* ---------- навигация по хэшу ---------- */
+const NAV = [
+  { id: "overview", ic: "🏠", t: "Обзор" },
+  { id: "analyses", ic: "🩸", t: "Анализы", b: D.biomarkers.length, bc: "grey", init: renderLabs },
+  { id: "sleep", ic: "⌚", t: "Сон и пульс", hide: !G, init: renderSleep },
+  { id: "visits", ic: "🩺", t: "Визиты к врачам", b: D.visits.length || null, bc: "grey" },
+  { id: "reminders", ic: "📅", t: "Напоминания", b: remAttention.length || null, bc: remOverdueCnt ? "red" : "amber" },
+  { id: "profile", ic: "👤", t: "Профиль" },
+].filter(n => !n.hide);
+$("nav").innerHTML = `<div class="navgrp"><div class="gt">Карта здоровья</div>` + NAV.map(n =>
+  `<a class="navitem" href="#${n.id}" data-id="${n.id}"><span class="ni-ic">${n.ic}</span><span class="ni-tx">${n.t}</span>` +
+  (n.b ? `<span class="ni-b ${n.bc}">${n.b}</span>` : "") + `</a>`).join("") + `</div>`;
+const inited = {};
+function route() {
+  let id = location.hash.replace("#", "");
+  if (!NAV.some(n => n.id === id)) id = "overview";
+  document.querySelectorAll(".module").forEach(m => m.classList.toggle("active", m.id === "m-" + id));
+  document.querySelectorAll(".navitem").forEach(a => {
+    const on = a.dataset.id === id;
+    a.classList.toggle("active", on);
+    if (on && window.innerWidth < 760) a.scrollIntoView({ inline: "center", block: "nearest" });
+  });
+  const n = NAV.find(x => x.id === id);
+  if (n.init && !inited[id]) { inited[id] = true; n.init(); }   // графики рисуем, когда вкладка видна
+  document.title = `${n.t} · Health OS`;
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+route();
 </script>
 </body>
 </html>
