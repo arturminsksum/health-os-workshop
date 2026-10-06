@@ -7,6 +7,7 @@
   python3 run.py check              — проверить настройки: ключ, бот, порт
   python3 run.py ask "вопрос"       — спросить по медкарте без Telegram
   python3 run.py add файл [файл…]   — добавить анализ или заключение без Telegram
+  python3 run.py step N             — поставить готовое решение шага N (данные не трогает)
 """
 import sys
 import threading
@@ -48,10 +49,34 @@ def check():
     print("Всё готово, запускай: python3 run.py" if ok else "Поправь пункты выше и запусти проверку ещё раз")
 
 
+def step(n):
+    """Готовое решение шага: копирует файлы из steps/NN-*/solution/ поверх проекта и пересобирает страницу."""
+    import shutil
+    root = Path(__file__).resolve().parent
+    found = sorted(root.glob(f"steps/{int(n):02d}-*/solution"))
+    if not found:
+        return print(f"Готового решения шага {n} нет. Есть шаги: "
+                     + ", ".join(p.parent.name for p in sorted(root.glob("steps/*/solution"))))
+    src = found[0]
+    for f in src.rglob("*"):
+        if f.is_file():
+            dst = root / f.relative_to(src)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(f, dst)
+            print("  обновлён:", dst.relative_to(root))
+    import medcard
+    medcard.rebuild_page()
+    print(f"Готовое решение шага {n} поставлено. Обнови страницу в браузере.")
+
+
 def main():
     args = sys.argv[1:]
+    if args[:1] == ["step"] and len(args) > 1:
+        return step(args[1])
     if args[:1] == ["check"]:
         return check()
+    if args[:1] == ["ask"] and not (Path(__file__).resolve().parent / "app" / "ask.py").exists():
+        return print("Вопросы по медкарте появятся вместе с ботом на одном из шагов урока.")
     if args[:1] == ["ask"]:
         import ask
         res = ask.answer(" ".join(args[1:]))
@@ -70,10 +95,14 @@ def main():
     if args[:1] == ["web"]:  # только страница (на общем сервере она запущена всегда)
         import web
         return web.serve()
-    import bot
+    import web
+    try:
+        import bot  # бота в стартовой версии нет — он появляется на одном из шагов урока
+    except ImportError:
+        print("Бота пока нет — работает только страница.")
+        return web.serve()
     if args[:1] == ["bot"]:  # только бот
         return bot.run()
-    import web
     threading.Thread(target=web.serve, daemon=True).start()
     bot.run()
     if not config.TELEGRAM_BOT_TOKEN:  # без бота держим работающей хотя бы страницу

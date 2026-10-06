@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Health OS — личная карта здоровья</title>
-<script src="chart.umd.min.js"></script>
 <script src="data.js"></script>
 <style>
   :root {
@@ -14,12 +13,10 @@
     --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
   }
   * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--bg); color: var(--ink); overflow-wrap: anywhere; overflow-x: hidden;
-    font: 16.5px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased; }
+    font: 16.5px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
 
-  /* оболочка */
+  /* оболочка: боковое меню + контент */
   .app { display: flex; min-height: 100vh; align-items: flex-start; }
   .sidebar { width: 244px; flex: none; background: var(--card); border-right: 1px solid var(--border);
     padding: 20px 12px 28px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
@@ -30,17 +27,13 @@
   .navgrp { margin-top: 16px; }
   .navgrp .gt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); padding: 0 10px 6px; font-weight: 700; }
   .navitem { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--ink);
-    font-size: 15.5px; font-weight: 500; text-decoration: none; width: 100%; margin-bottom: 1px; }
+    font-size: 15.5px; font-weight: 500; text-decoration: none; margin-bottom: 1px; }
   .navitem:hover { background: #f3f4f6; }
   .navitem.active { background: var(--accent-bg); color: var(--accent); font-weight: 650; }
   .ni-ic { width: 20px; text-align: center; font-size: 15px; flex: none; }
   .ni-tx { flex: 1; min-width: 0; }
-  .ni-b { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 20px; flex: none; }
-  .ni-b.red { color: var(--red); background: var(--red-bg); }
-  .ni-b.amber { color: var(--amber); background: var(--amber-bg); }
-  .ni-b.grey { color: var(--muted); background: #f1f3f5; }
+  .ni-b { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 20px; color: var(--muted); background: #f1f3f5; }
   .sidefoot { margin: 22px 10px 0; font-size: 11.5px; color: var(--faint); line-height: 1.5; }
-
   .main { flex: 1; min-width: 0; }
   .content { max-width: 940px; margin: 0 auto; padding: 32px 30px 72px; }
   .module { display: none; }
@@ -49,27 +42,19 @@
   .mtitle { font-size: 28px; margin: 0 0 5px; letter-spacing: -.02em; font-weight: 700; }
   .mdesc { color: var(--muted); font-size: 15.5px; margin: 0 0 22px; }
   h2.section { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin: 30px 0 14px; font-weight: 600; }
-  h2.section.first { margin-top: 4px; }
-  h3.gname { margin: 26px 0 12px; font-size: 18px; }
+  h3.gname { margin: 28px 0 10px; font-size: 18px; }
   h3.gname:first-child { margin-top: 4px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 15px 17px; }
+  .empty { color: var(--muted); }
+  .val.ok { color: var(--green); } .val.high, .val.low { color: var(--red); }
 
-  /* обзор */
+  /* обзор: шапка, плитки, статусы */
   .hero { display: flex; gap: 16px; align-items: center; background: linear-gradient(120deg, #2563eb, #4f46e5);
     color: #fff; border-radius: 16px; padding: 20px 22px; margin-bottom: 8px; box-shadow: 0 6px 20px rgba(37,99,235,.22); }
   .avatar { width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,.2); display: flex;
     align-items: center; justify-content: center; font-size: 22px; font-weight: 700; flex: none; }
   .hero h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; line-height: 1.2; }
   .hero .hm { font-size: 14.5px; opacity: .88; margin-top: 4px; }
-  .tldr { display: grid; gap: 10px; }
-  .tldr .row { padding: 12px 14px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); border-left: 4px solid var(--accent); }
-  .tldr .row.warn { border-left-color: var(--amber); }
-  .tldr .row.ok { border-left-color: var(--green); }
-  .tldr .xhead { display: flex; align-items: flex-start; gap: 11px; }
-  .tldr .ic { font-size: 16px; line-height: 1.45; }
-  .tldr .tx { flex: 1; min-width: 0; }
-  .tldr .tx { font-size: 15.5px; }
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   .tile { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px;
     box-shadow: var(--shadow); border-top: 4px solid var(--faint); text-decoration: none; color: var(--ink); display: block; }
@@ -79,104 +64,26 @@
   .tile .tv small { font-size: 12.5px; font-weight: 500; color: var(--faint); margin-left: 3px; letter-spacing: 0; }
   .tile.green .tv { color: var(--green); } .tile.amber .tv { color: var(--amber); } .tile.red .tv { color: var(--red); }
   .tile .tc { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
-  .more { display: inline-block; margin-top: 10px; font-size: 14px; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .tldr { display: grid; gap: 10px; }
+  .tldr .row { display: flex; gap: 11px; padding: 12px 14px; border-radius: 10px; font-size: 15.5px;
+    border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); border-left: 4px solid var(--accent); }
+  .tldr .row.warn { border-left-color: var(--amber); } .tldr .row.ok { border-left-color: var(--green); }
 
-  /* анализы */
-  .bcard { scroll-margin-top: 80px; }
-  .bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 14px; }
-  .bhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-  .bname { font-weight: 700; font-size: 17px; }
-  .bfull { color: var(--muted); font-size: 13px; }
-  .bval { font-size: 24px; font-weight: 700; text-align: right; white-space: nowrap; }
-  .bval small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 3px; }
-  .bval.high, .bval.low { color: var(--red); } .bval.ok { color: var(--green); }
-  .bsub { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 13.5px; margin-top: 4px; }
-  .badge { font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 20px; }
-  .badge.high, .badge.low { color: var(--red); background: var(--red-bg); }
-  .badge.ok { color: var(--green); background: var(--green-bg); }
-  .bcard { border-left: 4px solid var(--green); }
-  .bcard.high, .bcard.low { border-left-color: var(--red); }
-  .chart { position: relative; height: 190px; margin-top: 10px; }
-  .chart.sm { height: 170px; }
-
-  /* сон */
-  .sum { font-size: 17px; margin: 0 0 4px; }
-  .sumline { margin: 6px 0 0; font-size: 15px; }
-  .sumline .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; background: var(--green); }
-  .sumline .dot.out { background: var(--amber); }
-  .hint { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-top: 12px; }
-  .legend i { display: inline-block; width: 14px; height: 9px; background: rgba(22,163,74,.3); border-radius: 2px; margin-right: 6px; }
-  .sgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 14px; }
-  .sgrid .chart { height: 210px; }
-  .tiles.six { grid-template-columns: repeat(6, 1fr); gap: 10px; }
-  .tiles.six .tile { padding: 11px 12px; }
-  .tiles.six .tn { font-size: 12.5px; }
-  .tiles.six .tv { font-size: 23px; }
-  .tiles.six .tc { font-size: 12px; }
-  .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
-  @media (max-width: 1000px) { .tiles.six { grid-template-columns: repeat(3, 1fr); } }
-  @media (max-width: 759px) { .sgrid .chart { height: 190px; } }
-
-
-  /* раскрывающиеся карточки */
-  .xcard.has-x { cursor: pointer; position: relative; transition: box-shadow .15s, border-color .15s; }
-  .xcard.has-x:hover { border-color: #cfd6e4; box-shadow: 0 2px 8px rgba(16,24,40,.08); }
-  .xcard.has-x .xhead { padding-right: 24px; }
-  .xchev { position: absolute; right: 14px; top: 14px; width: 9px; height: 9px; border-right: 2px solid var(--faint);
-    border-bottom: 2px solid var(--faint); transform: rotate(45deg); transition: transform .22s; pointer-events: none; }
-  .xcard.open .xchev { transform: rotate(-135deg); top: 18px; }
-  .xwrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .28s ease; cursor: default; }
-  .xcard.open .xwrap { grid-template-rows: 1fr; }
-  .xin { overflow: hidden; min-height: 0; }
-  .xbody { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border); }
-  .xminis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
-  .xmini { background: #fafbfc; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
-  .xmini .xt { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-size: 14px; }
-  .xmini .xt b { font-size: 15px; }
-  .xmini .xv { font-weight: 700; white-space: nowrap; } .xmini .xv.ok { color: var(--green); } .xmini .xv.high, .xmini .xv.low { color: var(--red); }
-  .xmini .xs { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
-  .xmini .chart { height: 120px; margin-top: 6px; }
-  .xlast { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .xlast span { font-size: 12.5px; padding: 2px 9px; border-radius: 20px; background: #f1f3f5; color: var(--muted); white-space: nowrap; }
-  .xlast span.ok { background: var(--green-bg); color: var(--green); } .xlast span.high, .xlast span.low { background: var(--red-bg); color: var(--red); }
-  .xlinks { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 14px; }
-  .xlinks a { color: var(--accent); font-weight: 600; text-decoration: none; }
-  .xvisit { margin-top: 12px; font-size: 14px; color: var(--muted); }
-  .xvisit a { color: var(--accent); font-weight: 600; text-decoration: none; }
-  @keyframes flash { 0%, 60% { box-shadow: 0 0 0 3px rgba(37,99,235,.55), 0 6px 18px rgba(37,99,235,.2); } 100% { box-shadow: var(--shadow); } }
-  .bcard.flash { animation: flash 2.2s ease; }
-
-  /* новые данные */
-  .isnew { background: #fff8db !important; border-color: #f1df9a !important; }
-  .newpill { display: none; font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 20px; background: #facc15; color: #5b4300;
-    margin-left: 8px; vertical-align: 2px; letter-spacing: .02em; white-space: nowrap; }
-  .isnew .newpill { display: inline-block; }
-  .newbanner { display: block; margin-bottom: 14px; padding: 12px 16px; border-radius: 12px; background: #fff8db; border: 1px solid #f1df9a;
-    color: #5b4300; font-weight: 650; text-decoration: none; box-shadow: var(--shadow); }
-  .newbanner:hover { background: #fff3c2; }
-  .newbanner[hidden] { display: none; }
-  .latblk { margin-bottom: 8px; padding: 14px; border-radius: 14px; background: #eef2f9; border: 1px solid var(--border); }
-  .latblk.isnew { background: #fff3c2 !important; border-color: #f1df9a !important; }
-  .lathead { font-weight: 700; font-size: 16px; margin: 0 2px 12px; }
-  .latblk.isnew .newpill { display: inline-block; }
-  .lastlab { display: block; margin-top: 12px; padding: 11px 15px; border-radius: 11px; background: var(--card); border: 1px solid var(--border);
-    box-shadow: var(--shadow); text-decoration: none; color: var(--ink); font-size: 15px; }
-  .lastlab:hover { border-color: #cfd6e4; }
-  .lastlab .ok { color: var(--green); font-weight: 700; } .lastlab .bad { color: var(--red); font-weight: 700; }
-  .lastlab .go { color: var(--accent); font-weight: 600; white-space: nowrap; }
-  .evcard { margin-bottom: 12px; border-left: 4px solid var(--accent); }
-  .evcard.k-analysis { border-left-color: var(--red); } .evcard.k-visit { border-left-color: var(--green); } .evcard.k-import { border-left-color: var(--faint); }
-  .evhead { display: flex; gap: 12px; align-items: flex-start; }
-  .evic { font-size: 22px; line-height: 1.2; flex: none; }
-  .evt { font-weight: 700; font-size: 17px; }
-  .evm { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
-  .evcard ul { margin: 10px 0 0; padding-left: 20px; } .evcard li { margin: 4px 0; font-size: 15px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-  .chip { font-size: 12.5px; font-weight: 600; padding: 3px 11px; border-radius: 20px; background: var(--accent-bg); color: var(--accent); text-decoration: none; }
-  .chip:hover { background: #dbe6ff; }
-  .ni-b.yellow { color: #5b4300; background: #facc15; }
-  .ni-b[hidden] { display: none; }
+  /* таблицы (анализы, сон) */
+  .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; font-size: 15px; table-layout: fixed; }
+  .tbl.labs th:nth-child(1) { width: 27%; } .tbl.labs th:nth-child(2) { width: 19%; } .tbl.labs th:nth-child(3) { width: 14%; }
+  .tbl.labs th:nth-child(4) { width: 20%; }
+  .tbl th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint);
+    font-weight: 600; padding: 10px 14px; background: #fafbfc; border-bottom: 1px solid var(--border); }
+  .tbl td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: baseline; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl .num { text-align: right; white-space: nowrap; }
+  .tbl .val { font-weight: 700; white-space: nowrap; }
+  .tbl .val small { font-weight: 500; color: var(--muted); font-size: 12.5px; margin-left: 3px; }
+  .tbl .nm b { display: block; }
+  .tbl .nm span, .tbl .dyn { color: var(--muted); font-size: 13px; }
+  .tbl .dyn { white-space: nowrap; }
 
   /* визиты */
   .visit { margin-bottom: 12px; border-left: 4px solid var(--accent); }
@@ -186,16 +93,6 @@
   .visit ul { margin: 6px 0 0; padding-left: 20px; } .visit li { margin: 3px 0; }
   .visit .rh { display: block; margin-top: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
 
-  /* напоминания */
-  .rrow .xhead { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; }
-  .rrow { background: var(--card);
-    border: 1px solid var(--border); border-radius: 11px; padding: 13px 15px; margin-bottom: 10px; box-shadow: var(--shadow); border-left: 4px solid var(--faint); }
-  .rrow.overdue { border-left-color: var(--red); background: var(--red-bg); }
-  .rrow.soon { border-left-color: var(--amber); }
-  .rrow .rw { font-weight: 700; font-size: 16.5px; } .rrow .rwhy { color: var(--muted); font-size: 14.5px; margin-top: 2px; }
-  .rrow .rd { text-align: right; flex: none; font-size: 14px; color: var(--muted); }
-  .rrow.overdue .rd b { color: var(--red); } .rrow.soon .rd b { color: var(--amber); }
-
   /* профиль */
   .profile { padding: 18px 20px; }
   .pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px 26px; }
@@ -203,27 +100,33 @@
   .pv { font-size: 16.5px; margin-top: 2px; }
   .psections { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px 26px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
   .psec ul { margin: 6px 0 0; padding-left: 18px; } .psec li { margin: 3px 0; font-size: 15px; }
-  .empty { color: var(--muted); }
   footer { margin-top: 40px; color: var(--faint); font-size: 12.5px; }
 
   @media (max-width: 1000px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 759px) {
     .app { flex-direction: column; align-items: stretch; }
-    .sidebar { width: 100%; height: auto; position: sticky; top: 0; z-index: 20; border-right: none;
-      border-bottom: 1px solid var(--border); padding: 10px 0 8px; overflow: visible; }
+    .sidebar { width: 100%; height: auto; z-index: 20; border-right: none; border-bottom: 1px solid var(--border); padding: 10px 0 8px; overflow: visible; }
     .brand { padding: 0 14px 6px; display: flex; align-items: baseline; gap: 10px; }
     .brand .bs, .sidefoot, .navgrp .gt { display: none; }
-    .navgrp { margin: 0; display: flex; gap: 6px; overflow-x: auto; padding: 2px 14px 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .navgrp { margin: 0; display: flex; gap: 6px; overflow-x: auto; padding: 2px 14px 4px; scrollbar-width: none; }
     .navgrp::-webkit-scrollbar { display: none; }
-    .navitem { width: auto; flex: none; white-space: nowrap; font-size: 14px; padding: 7px 11px; background: #f3f4f6; border-radius: 20px; margin: 0; }
+    .navitem { flex: none; white-space: nowrap; font-size: 14px; padding: 7px 11px; background: #f3f4f6; border-radius: 20px; margin: 0; }
     .navitem.active { background: var(--accent-bg); }
     .content { padding: 20px 14px 56px; }
     .mtitle { font-size: 23px; }
     .hero { padding: 16px; gap: 12px; } .hero h1 { font-size: 20px; } .avatar { width: 46px; height: 46px; font-size: 18px; }
     .tile .tv { font-size: 23px; }
-    .rrow .xhead { flex-direction: column; gap: 4px; } .rrow .rd { text-align: left; }
-    .xcard.has-x .xhead { padding-right: 22px; }
-    .xchev { top: 4px; }
+    /* таблицы на телефоне: каждая строка — маленькая карточка, подписи берутся из data-l */
+    .tbl thead { display: none; }
+    .tbl, .tbl tbody { display: block; }
+    .tbl tr { display: grid; grid-template-columns: 1fr auto; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    .tbl tr:last-child { border-bottom: none; }
+    .tbl td { border: none; padding: 1px 0; }
+    .tbl td[data-l]::before { content: attr(data-l) ": "; color: var(--faint); font-size: 12.5px; }
+    .tbl td.full { grid-column: 1 / -1; font-size: 13px; }
+    .tbl.days tr { grid-template-columns: repeat(2, 1fr); }
+    .tbl.days td:first-child { grid-column: 1 / -1; font-weight: 700; }
+    .tbl .num { text-align: left; }
   }
 </style>
 </head>
@@ -237,50 +140,31 @@
   <main class="main"><div class="content">
 
     <section class="module" id="m-overview">
-      <a class="newbanner" href="#new" id="newBanner" hidden></a>
       <div class="hero"><div class="avatar" id="avatar"></div><div><h1 id="name"></h1><div class="hm" id="meta"></div></div></div>
       <h2 class="section">Ключевые цифры</h2>
       <div class="tiles" id="tiles"></div>
-      <div id="lastLab"></div>
       <h2 class="section">Статус: на что смотреть</h2>
       <div class="tldr" id="tldr"></div>
-      <h2 class="section">Ближайшие напоминания</h2>
-      <div id="nextRem"></div>
-      <a class="more" href="#reminders">Все напоминания →</a>
-    </section>
-
-    <section class="module" id="m-new">
-      <h1 class="mtitle">Что нового</h1>
-      <div class="mdesc">Недавно добавленные документы и что в них изменилось. Новые подсвечены жёлтым.</div>
-      <div id="feed"></div>
     </section>
 
     <section class="module" id="m-analyses">
       <h1 class="mtitle">Анализы</h1>
-      <div class="mdesc">Лабораторные показатели во времени. Зелёная полоса на графике — референсная норма.</div>
-      <div id="latest"></div>
+      <div class="mdesc">Последние значения по группам и как они менялись. Красным — вне нормы.</div>
       <div id="labs"></div>
     </section>
 
     <section class="module" id="m-sleep">
-      <h1 class="mtitle">Сон и восстановление</h1>
-      <div class="mdesc">Данные часов за 90 дней. Сверху: последние 7 дней против вашей обычной нормы.</div>
-      <div class="tiles six" id="sleepTiles"></div>
-      <h2 class="section">Динамика за 90 дней</h2>
-      <div class="sgrid" id="sleepCharts"></div>
-      <div class="legend" id="sleepLegend"></div>
+      <h1 class="mtitle">Сон и пульс</h1>
+      <div class="mdesc">Данные часов. Сверху: последние 7 дней против вашей обычной нормы.</div>
+      <div class="tiles" id="sleepTiles"></div>
+      <h2 class="section">По дням, последние 7</h2>
+      <div id="sleepDays"></div>
     </section>
 
     <section class="module" id="m-visits">
       <h1 class="mtitle">Визиты к врачам</h1>
       <div class="mdesc">Новые сверху: диагноз, находки и рекомендации.</div>
       <div id="visits"></div>
-    </section>
-
-    <section class="module" id="m-reminders">
-      <h1 class="mtitle">Напоминания</h1>
-      <div class="mdesc">Что пора проверить. Просрочки считаются от сегодняшней даты.</div>
-      <div id="reminders"></div>
     </section>
 
     <section class="module" id="m-profile">
@@ -297,417 +181,123 @@
 const D = window.HEALTH_DATA;
 const $ = id => document.getElementById(id);
 const FLAG_RU = { high: "выше нормы", low: "ниже нормы", ok: "в норме" };
-const COLOR = { high: "#dc2626", low: "#dc2626", ok: "#16a34a" };
 const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 
-// "2025-01-15" -> "15 января 2025"
-function fmtDate(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
-  return `${d} ${MONTHS[m - 1]} ${y}`;
-}
-// дата как дробный год — для оси X с реальными промежутками между анализами
-function fracYear(iso) {
-  const t = new Date(iso + "T00:00:00Z");
-  const start = Date.UTC(t.getUTCFullYear(), 0, 1), end = Date.UTC(t.getUTCFullYear() + 1, 0, 1);
-  return t.getUTCFullYear() + (t - start) / (end - start);
-}
+/* ---------- общие помощники ---------- */
+const fmtDate = iso => { const [y, m, d] = iso.split("-").map(Number); return `${d} ${MONTHS[m - 1]} ${y}`; };   // "2025-01-15" -> "15 января 2025"
+const fmtShort = iso => { const [, m, d] = iso.split("-").map(Number); return `${d} ${MONTHS[m - 1].slice(0, 3)}`; };
+const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? few : many; };
+const list = items => items.length ? `<ul>${items.map(i => `<li>${i}</li>`).join("")}</ul>` : `<span class="empty">нет</span>`;
+const lastOf = b => b.series[b.series.length - 1];
+const bmByKey = k => D.biomarkers.find(b => b.key === k);
 function ageYears(birthIso, now) {
   const b = new Date(birthIso + "T00:00:00");
-  let a = now.getFullYear() - b.getFullYear();
-  const had = now.getMonth() > b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() >= b.getDate());
-  return had ? a : a - 1;
-}
-function plural(n, one, few, many) {
-  const m10 = n % 10, m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
-  return many;
-}
-const list = items => items.length ? `<ul>${items.map(i => `<li>${i}</li>`).join("")}</ul>` : `<span class="empty">нет</span>`;
-
-const today = new Date();
-const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-/* ---------- анализы ---------- */
-// плагин: закрашивает референсный диапазон (low..high) на графике
-const refBand = {
-  id: "refBand",
-  beforeDatasetsDraw(chart, _, opts) {
-    const { ctx, chartArea: a, scales: { y } } = chart;
-    const top = opts.high == null ? a.top : Math.max(a.top, y.getPixelForValue(opts.high));
-    const bottom = opts.low == null ? a.bottom : Math.min(a.bottom, y.getPixelForValue(opts.low));
-    if (bottom <= top) return;
-    ctx.save();
-    ctx.fillStyle = "rgba(22,163,74,.12)";
-    ctx.fillRect(a.left, top, a.right - a.left, bottom - top);
-    ctx.restore();
-  },
-};
-
-function drawChart(canvas, b) {
-  const pts = b.series.map(s => ({ x: fracYear(s.date), y: s.value, date: s.date, lab: s.lab }));
-  const xs = pts.map(q => q.x);
-  const minX = Math.floor(Math.min(...xs)), maxX = Math.max(Math.ceil(Math.max(...xs)), minX + 1);
-  // ось Y строится по значениям; граница нормы попадает на ось, только если она рядом с ними
-  // (ферритин 18–74 при норме до 400 не должен сплющиваться в линию)
-  const vals = pts.map(q => q.y);
-  const vMin = Math.min(...vals), vMax = Math.max(...vals);
-  const near = Math.max(vMax - vMin, Math.abs(vMax) * 0.1);
-  const ys = vals.concat([b.low, b.high].filter(v => v != null && v >= vMin - near && v <= vMax + near));
-  let lo = Math.min(...ys), hi = Math.max(...ys);
-  const minSpan = Math.abs(hi) * 0.2;  // 148 и 151 не должны выглядеть обвалом
-  if (hi - lo < minSpan) { const mid = (hi + lo) / 2; lo = mid - minSpan / 2; hi = mid + minSpan / 2; }
-  const pad = (hi - lo || hi || 1) * 0.15;
-  new Chart(canvas, {
-    type: "line",
-    data: { datasets: [{
-      data: pts, borderColor: "#2563eb", backgroundColor: "#2563eb", borderWidth: 2, tension: 0.2,
-      pointRadius: c => isNewPoint(b.key, c.raw && c.raw.date) ? 8 : 5, pointHoverRadius: 8,
-      pointBackgroundColor: b.series.map(s => COLOR[s.flag]),
-      pointBorderColor: c => isNewPoint(b.key, c.raw && c.raw.date) ? "#facc15" : "#fff",
-      pointBorderWidth: c => isNewPoint(b.key, c.raw && c.raw.date) ? 4 : 1.5,
-    }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: "nearest", intersect: false },
-      plugins: {
-        legend: { display: false },
-        refBand: { low: b.low, high: b.high },
-        tooltip: { callbacks: {
-          title: it => fmtDate(it[0].raw.date),
-          label: it => `${b.name}: ${it.parsed.y} ${b.unit} (${it.raw.lab})`,
-        } },
-      },
-      scales: {
-        x: { type: "linear", min: minX, max: maxX,
-             ticks: { stepSize: 1, maxTicksLimit: 8, callback: v => Number.isInteger(v) ? v : "" },
-             grid: { color: "#eef1f5" } },
-        y: { suggestedMin: Math.max(0, lo - pad), suggestedMax: hi + pad, grid: { color: "#eef1f5" } },
-      },
-    },
-    plugins: [refBand],
-  });
+  const a = now.getFullYear() - b.getFullYear();
+  return now.getMonth() > b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() >= b.getDate()) ? a : a - 1;
 }
 
-function labCard(b, idAttr) {
-  const last = b.series[b.series.length - 1], n = b.series.length;
-  return `<div class="card bcard ${last.flag}" ${idAttr} data-key="${b.key}">
-    <div class="bhead">
-      <div><div class="bname">${b.name}<span class="newpill">новое</span></div><div class="bfull">${b.fullName}</div></div>
-      <div class="bval ${last.flag}">${last.value}<small>${b.unit}</small></div>
-    </div>
-    <div class="bsub">
-      <span>Норма: ${b.ref} ${b.unit}</span>
-      <span class="badge ${last.flag}">${FLAG_RU[last.flag]}</span>
-    </div>
-    <div class="bsub"><span>Последний: ${fmtDate(last.date)} · ${n} ${plural(n, "замер", "замера", "замеров")}</span></div>
-    <div class="chart"><canvas data-key="${b.key}"></canvas></div>
-  </div>`;
+/* ---------- часы: среднее за 7 дней против нормы (нужно и обзору, и сну) ---------- */
+const G = D.garmin && D.garmin.days && D.garmin.days.length >= 7 ? D.garmin : null;
+const last7 = G ? G.days.slice(-7) : [];
+const avg = k => last7.reduce((s, r) => s + r[k], 0) / last7.length;
+const num = (v, dig) => dig ? v.toFixed(dig).replace(".", ",") : Math.round(v).toLocaleString("ru-RU");
+// норма — коридор p25..p75 из личной истории; good: 1 — чем больше, тем лучше, -1 — чем меньше, тем лучше
+function vsNorm(k, dig, good) {
+  const a = avg(k), n = G.norms[k], r = v => Number(v.toFixed(dig));
+  const pos = r(a) < r(n.p25) ? -1 : r(a) > r(n.p75) ? 1 : 0;
+  const bad = pos !== 0 && pos !== good;
+  return { a, text: pos === 0 ? "в вашей норме" : bad ? (pos < 0 ? "ниже нормы" : "выше нормы") : "лучше нормы",
+           cls: bad ? "amber" : "green", range: `${num(n.p25, dig)}–${num(n.p75, dig)}` };
 }
-function renderLabs() {
-  // сверху — последние добавленные анализы: новые данные не должны прятаться в нижних группах
-  $("latest").innerHTML = LATEST.map((e, bi) => {
-    const keys = (e.markers || []).filter(bmByKey);
-    const lab = (() => { for (const k of keys) { const p = bmByKey(k).series.find(x => x.date === e.date); if (p && p.lab) return p.lab; } return e.title.replace(/^Анализ,\s*/, ""); })();
-    return `<div class="latblk" data-ev="${e.i}" id="lat-${bi}">
-      <div class="lathead">🆕 ${bi === 0 ? "Последний добавленный анализ" : "Добавленный анализ"} — ${fmtDate(e.date)}, ${lab}, добавлен ${addedText(e.added)}<span class="newpill">новое</span></div>
-      <div class="bgrid">${keys.map(k => labCard(bmByKey(k), "")).join("")}</div></div>`;
-  }).join("");
-  const groups = [...new Set(D.biomarkers.map(b => b.group))];
-  $("labs").innerHTML = groups.map(g =>
-    `<h3 class="gname">${g}</h3><div class="bgrid">${D.biomarkers.filter(b => b.group === g).map(b => labCard(b, `id="bm-${b.key}"`)).join("")}</div>`).join("");
-  document.querySelectorAll("#latest canvas[data-key], #labs canvas[data-key]").forEach(c =>
-    drawChart(c, D.biomarkers.find(b => b.key === c.dataset.key)));
-}
-
-/* ---------- сон и восстановление ---------- */
-function renderSleep() {
-  const G = D.garmin;
-  if (!G || !G.days || G.days.length < 14) { $("sleepTiles").innerHTML = '<span class="empty">Данных часов нет.</span>'; return; }
-  const days = G.days, N = days.length, last7 = days.slice(-7);
-  const f1 = v => v.toFixed(1).replace(".", ",");
-  const f0 = v => Math.round(v).toLocaleString("ru-RU");
-  const avg = (arr, k) => arr.reduce((t, r) => t + r[k], 0) / arr.length;
-
-  /* --- плитки: последние 7 дней против нормы --- */
-  const T = [
-    { k: "sleepHours", label: "Сон", unit: "ч", fmt: f1, good: 1 },
-    { k: "sleepScore", label: "Балл сна", unit: "из 100", fmt: f0, good: 1 },
-    { k: "restingHR", label: "Пульс в покое", unit: "уд/мин", fmt: f0, good: -1 },
-    { k: "hrvMs", label: "HRV", unit: "мс", fmt: f0, good: 1 },
-    { k: "bodyBatteryMorning", label: "Заряд утром", unit: "из 100", fmt: f0, good: 1 },
-    { k: "steps", label: "Шаги в день", unit: "", fmt: f0, good: 1 },
-  ];
-  $("sleepTiles").innerHTML = T.map(t => {
-    const n = G.norms[t.k], a = avg(last7, t.k), r = v => Number(v.toFixed(t.fmt === f1 ? 1 : 0));
-    const pos = r(a) < r(n.p25) ? -1 : r(a) > r(n.p75) ? 1 : 0;
-    const bad = pos !== 0 && pos !== t.good;
-    const txt = pos === 0 ? "в вашей норме" : bad ? (pos < 0 ? "ниже нормы" : "выше нормы") : "лучше нормы";
-    return `<div class="tile ${bad ? "amber" : "green"}"><div class="tn">${t.label}</div>
-      <div class="tv">${t.fmt(a)}<small>${t.unit}</small></div><div class="tc">${txt}<br><span style="white-space:nowrap">норма ${t.fmt(n.p25)}–${t.fmt(n.p75)}</span></div></div>`;
-  }).join("");
-
-  /* --- эпизод «простуда»: ≥4 дня подряд пульс в покое сильно выше нормы --- */
-  let ep = null;
-  {
-    const thr = G.norms.restingHR.p75 + 3; let st = -1;
-    for (let i = 0; i <= N; i++) {
-      const hi = i < N && days[i].restingHR >= thr;
-      if (hi && st < 0) st = i;
-      if (!hi && st >= 0) { if (i - st >= 4 && (!ep || i - st > ep.e - ep.s + 1)) ep = { s: st, e: i - 1 }; st = -1; }
-    }
-  }
-
-  /* --- плагин: полоса нормы с подписью и серая полоса эпизода --- */
-  const sleepBands = {
-    id: "sleepBands",
-    beforeDatasetsDraw(chart, _, o) {
-      const { ctx, chartArea: a, scales: { x, y } } = chart;
-      ctx.save();
-      if (o.ep) {
-        const w = (x.getPixelForValue(1) - x.getPixelForValue(0)) / 2;
-        const l = Math.max(a.left, x.getPixelForValue(o.ep.s) - w), r = Math.min(a.right, x.getPixelForValue(o.ep.e) + w);
-        ctx.fillStyle = "rgba(107,114,128,.13)"; ctx.fillRect(l, a.top, r - l, a.bottom - a.top);
-        ctx.fillStyle = "#6b7280"; ctx.font = "10.5px -apple-system, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-        ctx.fillText("простуда", (l + r) / 2, a.top + 3);
-      }
-      if (o.low != null) {
-        const top = Math.max(a.top, y.getPixelForValue(o.high)), bot = Math.min(a.bottom, y.getPixelForValue(o.low));
-        if (bot > top) {
-          ctx.fillStyle = "rgba(22,163,74,.2)"; ctx.fillRect(a.left, top, a.right - a.left, bot - top);
-          ctx.strokeStyle = "rgba(22,163,74,.5)"; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(a.left, top); ctx.lineTo(a.right, top); ctx.moveTo(a.left, bot); ctx.lineTo(a.right, bot); ctx.stroke();
-          ctx.setLineDash([]); ctx.fillStyle = "#15803d"; ctx.font = "600 10.5px -apple-system, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-          const cy = (top + bot) / 2;   // подпись справа от графика, по центру полосы
-          ctx.fillText("ваша", a.right + 5, cy - 7); ctx.fillText("норма", a.right + 5, cy + 6);
-        }
-      }
-      ctx.restore();
-    },
-  };
-  const dm = d => { const [, m, dd] = d.split("-").map(Number); return `${dd} ${MONTHS[m - 1].slice(0, 3)}`; };
-  const niceRange = (vals, zero) => {
-    let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo || 1) * 0.1; lo -= pad; hi += pad;
-    const st = hi - lo > 60 ? 10 : hi - lo > 25 ? 5 : hi - lo > 10 ? 2 : hi - lo > 4 ? 1 : 0.5;
-    return { min: zero ? 0 : Math.floor(lo / st) * st, max: Math.ceil(hi / st) * st };
-  };
-  const xAxis = labels => ({ ticks: { maxTicksLimit: 6, maxRotation: 0, autoSkip: true, callback: function (v) { return dm(labels[v]); } }, grid: { display: false } });
-  const rolling = k => days.map((_, i) => i < 6 ? null : +(days.slice(i - 6, i + 1).reduce((t, r) => t + r[k], 0) / 7).toFixed(2));
-  // недели считаем от конца: последняя — последние 7 дней
-  const wk = []; for (let e = N; e - 7 >= 0; e -= 7) wk.unshift(days.slice(e - 7, e));
-  const wLabels = wk.map(w => w[0].date);
-
-  const daily = [
-    { k: "sleepHours", title: "Сон, часов", sub: "сколько вы спали за ночь", color: "#2563eb", fmt: f1 },
-    { k: "sleepScore", title: "Балл сна", sub: "оценка качества сна по часам, от 0 до 100", color: "#0891b2", fmt: f0 },
-    { k: "restingHR", title: "Пульс в покое, уд/мин", sub: "ниже — лучше; устойчивый рост часто значит болезнь или усталость", color: "#dc2626", fmt: f0 },
-    { k: "hrvMs", title: "HRV, мс", sub: "вариабельность пульса — чем выше, тем лучше восстановление", color: "#7c3aed", fmt: f0 },
-    { k: "bodyBatteryMorning", title: "Заряд утром", sub: "Body Battery — запас сил утром по оценке часов, от 0 до 100", color: "#d97706", fmt: f0 },
-  ];
-  const weekly = [
-    { id: "sleepStages", title: "Глубокий и быстрый сон, минут", sub: "за ночь, среднее по неделям" },
-    { id: "steps", title: "Шаги", sub: "среднее за день по неделям", k: "steps", color: "#16a34a" },
-    { id: "training", title: "Тренировки, минут в неделю", sub: "сумма по неделям", k: "trainingMinutes", color: "#4f46e5" },
-  ];
-  const card = (id, t) => `<div class="card"><div class="bname">${t.title}</div><div class="bfull">${t.sub}</div><div class="chart"><canvas id="sc-${id}"></canvas></div></div>`;
-  $("sleepCharts").innerHTML = daily.map(c => card(c.k, c)).join("") + weekly.map(c => card(c.id, c)).join("");
-  const baseOpts = (labels, yr, extra) => ({
-    responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
-    layout: { padding: { right: extra.sleepBands && extra.sleepBands.low != null ? 38 : 0 } },
-    plugins: { legend: { display: false }, ...extra },
-    scales: { x: xAxis(labels), y: { min: yr.min, max: yr.max, grid: { color: "#eef1f5" } } },
-  });
-
-  daily.forEach(c => {
-    const n = G.norms[c.k], vals = days.map(r => r[c.k]), roll = rolling(c.k);
-    const yr = niceRange(vals.concat([n.p25, n.p75]), false), labels = days.map(r => r.date);
-    if (c.k === "sleepScore" || c.k === "bodyBatteryMorning") yr.max = Math.min(yr.max, 100);   // шкалы 0–100
-    new Chart($("sc-" + c.k), {
-      type: "line",
-      data: { labels, datasets: [
-        { label: "день", data: vals, showLine: false, pointRadius: 2.2, pointHoverRadius: 4, backgroundColor: c.color + "55", borderColor: c.color + "55" },
-        { label: "среднее за 7 дней", data: roll, borderColor: c.color, borderWidth: 3, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, spanGaps: false },
-      ] },
-      options: baseOpts(labels, yr, { sleepBands: { low: n.p25, high: n.p75, ep }, tooltip: { callbacks: {
-        title: it => fmtDate(labels[it[0].dataIndex]),
-        label: it => it.parsed.y == null ? null : `${it.dataset.label === "день" ? "за день" : "среднее за 7 дней"}: ${c.fmt(it.parsed.y)}`,
-      } } }),
-      plugins: [sleepBands],
-    });
-  });
-
-  // глубокий + быстрый сон по неделям
-  {
-    const dp = wk.map(w => avg(w, "deepSleepMin")), rm = wk.map(w => avg(w, "remSleepMin"));
-    new Chart($("sc-sleepStages"), {
-      type: "line",
-      data: { labels: wLabels, datasets: [
-        { label: "глубокий", data: dp, borderColor: "#1d4ed8", backgroundColor: "#1d4ed8", borderWidth: 2.5, tension: 0.3, pointRadius: 3 },
-        { label: "быстрый (REM)", data: rm, borderColor: "#a855f7", backgroundColor: "#a855f7", borderWidth: 2.5, tension: 0.3, pointRadius: 3 },
-      ] },
-      options: { ...baseOpts(wLabels, niceRange(dp.concat(rm), false), { tooltip: { callbacks: {
-        title: it => `неделя с ${fmtDate(wLabels[it[0].dataIndex])}`, label: it => `${it.dataset.label}: ${f0(it.parsed.y)} мин` } },
-        legend: { display: true, position: "bottom", labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, font: { size: 11.5 } } } }) },
-    });
-  }
-  // шаги и тренировки — столбики по неделям
-  const bars = (id, vals, color, unit, band) => new Chart($("sc-" + id), {
-    type: "bar",
-    data: { labels: wLabels, datasets: [{ data: vals, backgroundColor: color + "cc", borderRadius: 4, maxBarThickness: 26 }] },
-    options: baseOpts(wLabels, niceRange(vals.concat(band ? [0, band.p75] : [0]), true), { sleepBands: band ? { low: band.p25, high: band.p75 } : {}, tooltip: { callbacks: {
-      title: it => `неделя с ${fmtDate(wLabels[it[0].dataIndex])}`, label: it => `${f0(it.parsed.y)} ${unit}` } } }),
-    plugins: [sleepBands],
-  });
-  bars("steps", wk.map(w => avg(w, "steps")), "#16a34a", "шагов в день", G.norms.steps);
-  bars("training", wk.map(w => w.reduce((t, r) => t + r.trainingMinutes, 0)), "#4f46e5", "мин за неделю", null);
-
-  $("sleepLegend").innerHTML =
-    `<span><span class="sw" style="background:#2563eb55"></span>точки — отдельные дни</span>` +
-    `<span><b style="color:#2563eb">━</b> жирная линия — среднее за 7 дней</span>` +
-    `<span><i></i>зелёная полоса — ваша обычная норма (середина значений за 90 дней)</span>` +
-    (ep ? `<span><i style="background:rgba(107,114,128,.25)"></i>серая полоса — вероятная простуда: ${fmtDate(days[ep.s].date)} – ${fmtDate(days[ep.e].date)}, пульс в покое был заметно выше нормы</span>` : "");
-}
-
-/* ---------- общие данные ---------- */
-const p = D.profile;
-const age = ageYears(p.birth, today);
-const ageTxt = `${age} ${plural(age, "год", "года", "лет")}`;
-const DAY = 86400000;
-const G = D.garmin && D.garmin.days && D.garmin.days.length >= 14 ? D.garmin : null;
-const remInfo = r => {
-  const diff = Math.round((new Date(r.due + "T00:00:00") - new Date(todayIso + "T00:00:00")) / DAY); // дней до срока
-  return { diff, overdue: diff < 0, soon: diff >= 0 && diff <= 30 };
-};
-const remAttention = D.reminders.filter(r => r.status === "planned" && (remInfo(r).overdue || remInfo(r).soon));
-const remOverdueCnt = D.reminders.filter(r => r.status === "planned" && remInfo(r).overdue).length;
 
 /* ---------- обзор ---------- */
+const p = D.profile, today = new Date();
+const age = ageYears(p.birth, today);
 $("name").textContent = p.name;
 $("avatar").textContent = p.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("");
 const nAn = D.biomarkers.reduce((s, b) => s + b.series.length, 0);
-$("meta").textContent = `${ageTxt} · ${D.biomarkers.length} показателей, ${nAn} замеров · ${D.visits.length} ${plural(D.visits.length, "визит", "визита", "визитов")} · обновлено ${fmtDate(D.generated)}`;
-
-/* ---------- раскрывающиеся карточки: мини-графики по связанным показателям ---------- */
-const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const L = "A-Za-zА-Яа-яЁё0-9";
-function markersInText(text) {
-  const out = [];
-  D.biomarkers.forEach(b => {
-    const names = [b.name, b.fullName, b.fullName.replace(/\s*\(.*?\)\s*/g, "")].filter(Boolean);
-    if (names.some(n => new RegExp(`(^|[^${L}])${escRe(n)}($|[^${L}])`, "i").test(text))) out.push(b.key);
-  });
-  return out;
-}
-const bmByKey = k => D.biomarkers.find(b => b.key === k);
-function miniBlock(b, withLast3) {
-  const l = b.series[b.series.length - 1];
-  return `<div class="xmini">
-    <div class="xt"><b>${b.name}</b><span class="xv ${l.flag}">${l.value} ${b.unit}</span></div>
-    <div class="xs">последняя сдача: ${fmtDate(l.date)}, ${l.value} ${b.unit} · норма ${b.ref}</div>
-    <div class="chart"><canvas data-mk="${b.key}"></canvas></div>
-    ${withLast3 ? `<div class="xlast">${b.series.slice(-3).reverse().map(s => `<span class="${s.flag}">${fmtDate(s.date)}: <b>${s.value}</b></span>`).join("")}</div>` : ""}
-  </div>`;
-}
-function visitFor(r, bms) {
-  const stems = new Set();
-  [r.what, ...bms.flatMap(b => [b.name, b.fullName])].forEach(t => (t.toLowerCase().match(/[a-zа-яё]{4,}/g) || []).forEach(w => stems.add(w.slice(0, 6))));
-  return [...D.visits].sort((a, b) => b.date.localeCompare(a.date))
-    .find(v => v.recs.some(rec => [...stems].some(st => rec.toLowerCase().includes(st))));
-}
-// карточка с раскрытием: head — всегда видна, body — только если есть что показать
-function xcard(cls, head, body) {
-  if (!body) return `<div class="${cls}"><div class="xhead">${head}</div></div>`;
-  return `<div class="${cls} xcard has-x" role="button" tabindex="0" aria-expanded="false"><div class="xhead">${head}</div><span class="xchev"></span>
-    <div class="xwrap"><div class="xin"><div class="xbody">${body}</div></div></div></div>`;
-}
-function toggleX(card) {
-  const open = card.classList.toggle("open");
-  card.setAttribute("aria-expanded", open);
-  if (open && !card.dataset.drawn) {
-    card.dataset.drawn = "1";
-    card.querySelectorAll("canvas[data-mk]").forEach(c => drawChart(c, bmByKey(c.dataset.mk)));
-  }
-}
-document.addEventListener("click", e => {
-  const f = e.target.closest("[data-focus]");
-  if (f) { e.preventDefault(); focusKey = f.dataset.focus; if (location.hash === "#analyses") route(); else location.hash = "#analyses"; return; }
-  if (e.target.closest(".xbody")) return;           // клики внутри раскрытой части не сворачивают
-  const c = e.target.closest(".xcard.has-x");
-  if (c) toggleX(c);
-});
-document.addEventListener("keydown", e => {
-  if ((e.key === "Enter" || e.key === " ") && e.target.matches(".xcard.has-x")) { e.preventDefault(); toggleX(e.target); }
-});
-let focusKey = null;
-
-$("tldr").innerHTML = D.tldr.map(t => {
-  const keys = (t.markers && t.markers.length ? t.markers : markersInText(t.text)).filter(bmByKey);
-  const head = `<span class="ic">${t.level === "ok" ? "✅" : t.level === "warn" ? "⚠️" : "ℹ️"}</span><span class="tx">${t.text}</span>`;
-  const body = keys.length ? `<div class="xminis">${keys.map(k => miniBlock(bmByKey(k), true)).join("")}</div>
-    <div class="xlinks">${keys.map(k => `<a href="#analyses" data-focus="${k}">Открыть в анализах${keys.length > 1 ? ": " + bmByKey(k).name : ""} →</a>`).join("")}</div>` : "";
-  return xcard(`row ${t.level}`, head, body);
-}).join("");
+$("meta").textContent = `${age} ${plural(age, "год", "года", "лет")} · ${D.biomarkers.length} показателей, ${nAn} замеров · ${D.visits.length} ${plural(D.visits.length, "визит", "визита", "визитов")} · обновлено ${fmtDate(D.generated)}`;
 
 (function renderTiles() {
   const tiles = [];
   const bm = (key, label) => {
-    const b = D.biomarkers.find(x => x.key === key);
-    if (!b) return;
-    const l = b.series[b.series.length - 1];
-    tiles.push({ label, val: String(l.value), unit: b.unit, cls: l.flag === "ok" ? "green" : "red",
+    const b = bmByKey(key); if (!b) return;
+    const l = lastOf(b);
+    tiles.push({ label, val: l.value, unit: b.unit, cls: l.flag === "ok" ? "green" : "red",
       cap: `${FLAG_RU[l.flag]} · норма ${b.ref} · ${fmtDate(l.date)}`, href: "#analyses" });
   };
   bm("ldl", "LDL"); bm("vitd", "Витамин D");
   if (G) {
-    const last7 = G.days.slice(-7);
-    const avg = k => last7.reduce((s, r) => s + r[k], 0) / last7.length;
-    const mk = (k, label, unit, dig) => {
-      const a = avg(k), n = G.norms[k], r = v => Number(v.toFixed(dig));
-      const inside = r(a) >= r(n.p25) && r(a) <= r(n.p75);
-      const s = dig ? r(a).toFixed(1).replace(".", ",") : String(Math.round(a));
-      tiles.push({ label, val: s, unit, cls: inside ? "green" : "amber",
-        cap: inside ? "в вашей норме" : (a < n.p25 ? "ниже вашей нормы" : "выше вашей нормы"), href: "#sleep" });
-    };
-    mk("sleepHours", "Сон, 7 дней", "ч", 1);
-    mk("restingHR", "Пульс в покое", "уд/мин", 0);
+    const hrs = vsNorm("sleepHours", 1, 1), hr = vsNorm("restingHR", 0, -1);
+    tiles.push({ label: "Сон, 7 дней", val: num(hrs.a, 1), unit: "ч", cls: hrs.cls, cap: hrs.text, href: "#sleep" });
+    tiles.push({ label: "Пульс в покое", val: num(hr.a, 0), unit: "уд/мин", cls: hr.cls, cap: hr.text, href: "#sleep" });
   }
   $("tiles").innerHTML = tiles.map(t => `<a class="tile ${t.cls}" href="${t.href}">
     <div class="tn">${t.label}</div><div class="tv">${t.val}<small>${t.unit}</small></div><div class="tc">${t.cap}</div></a>`).join("");
 })();
 
-function remRow(r) {
-  const { diff, overdue, soon } = remInfo(r);
-  const note = overdue ? `просрочено на ${-diff} ${plural(-diff, "день", "дня", "дней")}`
-    : diff === 0 ? "сегодня" : `через ${diff} ${plural(diff, "день", "дня", "дней")}`;
-  const bms = (r.markers || []).map(bmByKey).filter(Boolean);
-  const v = bms.length ? visitFor(r, bms) : null;
-  const body = bms.length ? `<div class="xminis">${bms.map(b => miniBlock(b, false)).join("")}</div>` +
-    (v ? `<div class="xvisit">рекомендовал: <a href="#visits">${v.doctor}, ${fmtDate(v.date)}</a></div>` : "") : "";
-  return xcard(`rrow ${overdue ? "overdue" : soon ? "soon" : ""}`,
-    `<div><div class="rw">${r.what}</div><div class="rwhy">${r.why}</div></div>
-    <div class="rd">срок: ${fmtDate(r.due)}<br><b>${note}</b></div>`, body);
+// статусы — просто статичные карточки
+$("tldr").innerHTML = D.tldr.map(t =>
+  `<div class="row ${t.level}"><span>${t.level === "ok" ? "✅" : t.level === "warn" ? "⚠️" : "ℹ️"}</span><span>${t.text}</span></div>`).join("");
+
+/* ---------- анализы ---------- */
+// «динамика» — последние 3 значения текстом; сюда же можно добавить графики
+const dynamics = b => b.series.length < 2 ? "—" : b.series.slice(-3).map(s => s.value).join(" → ");
+function labRow(b) {
+  const l = lastOf(b);
+  return `<tr>
+    <td class="nm"><b>${b.name}</b>${b.fullName !== b.name ? `<span>${b.fullName}</span>` : ""}</td>
+    <td class="val ${l.flag}" data-l="Значение">${l.value}<small>${b.unit}</small></td>
+    <td class="num" data-l="Норма">${b.ref}</td>
+    <td class="num" data-l="Дата">${fmtDate(l.date)}</td>
+    <td class="dyn full" data-l="Динамика">${dynamics(b)}</td>
+  </tr>`;
 }
-const sortedRem = [...D.reminders].sort((a, b) => a.due.localeCompare(b.due));
-$("nextRem").innerHTML = sortedRem.length ? sortedRem.filter(r => r.status === "planned").slice(0, 2).map(remRow).join("") || `<div class="empty">Запланированных нет.</div>` : `<div class="empty">Напоминаний нет.</div>`;
+function renderLabs() {
+  const groups = [...new Set(D.biomarkers.map(b => b.group))];
+  $("labs").innerHTML = groups.map(g => `<h3 class="gname">${g}</h3>
+    <table class="tbl labs"><thead><tr><th>Показатель</th><th>Последнее</th><th class="num">Норма</th><th class="num">Дата</th><th>Динамика</th></tr></thead>
+    <tbody>${D.biomarkers.filter(b => b.group === g).map(labRow).join("")}</tbody></table>`).join("");
+}
+
+/* ---------- сон и пульс ---------- */
+function renderSleep() {
+  if (!G) { $("sleepTiles").innerHTML = '<span class="empty">Данных часов нет.</span>'; return; }
+  // [ключ, подпись, единицы, знаков после запятой, что лучше: 1 — больше, -1 — меньше]
+  const T = [["sleepHours", "Сон", "ч", 1, 1], ["restingHR", "Пульс в покое", "уд/мин", 0, -1], ["hrvMs", "HRV", "мс", 0, 1]];
+  $("sleepTiles").innerHTML = T.map(([k, label, unit, dig, good]) => {
+    const v = vsNorm(k, dig, good);
+    return `<div class="tile ${v.cls}"><div class="tn">${label}</div><div class="tv">${num(v.a, dig)}<small>${unit}</small></div>
+      <div class="tc">${v.text}<br>норма ${v.range}</div></div>`;
+  }).join("");
+  $("sleepTiles").style.gridTemplateColumns = "repeat(auto-fit, minmax(170px, 1fr))";
+
+  const rows = [...last7].reverse().map(r => `<tr>
+    <td>${fmtShort(r.date)}</td>
+    <td class="num" data-l="Сон">${num(r.sleepHours, 1)} ч</td>
+    <td class="num" data-l="Балл сна">${r.sleepScore}</td>
+    <td class="num" data-l="Пульс в покое">${r.restingHR}</td>
+    <td class="num" data-l="HRV">${r.hrvMs}</td>
+    <td class="num" data-l="Шаги">${num(r.steps, 0)}</td></tr>`).join("");
+  $("sleepDays").innerHTML = `<table class="tbl days"><thead><tr><th>Дата</th><th class="num">Сон</th><th class="num">Балл сна</th>
+    <th class="num">Пульс в покое</th><th class="num">HRV</th><th class="num">Шаги</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
 
 /* ---------- визиты ---------- */
 $("visits").innerHTML = D.visits.length ? [...D.visits].sort((a, b) => b.date.localeCompare(a.date)).map(v => `
-  <div class="card visit" data-vdate="${v.date}">
-    <div class="vh">${v.diagnosis}<span class="newpill">новое</span></div>
+  <div class="card visit">
+    <div class="vh">${v.diagnosis}</div>
     <div class="vs">${fmtDate(v.date)} · ${v.doctor} · ${v.clinic}</div>
     <p>${v.findings}</p>
     <b class="rh">Рекомендации</b>${list(v.recs)}
   </div>`).join("") : `<div class="empty">Визитов пока нет.</div>`;
-
-/* ---------- напоминания ---------- */
-$("reminders").innerHTML = sortedRem.length ? sortedRem.map(remRow).join("") : `<div class="empty">Напоминаний нет.</div>`;
 
 /* ---------- профиль ---------- */
 $("profile").innerHTML = `
   <div class="pgrid">
     <div><div class="lbl">Имя</div><div class="pv">${p.name}</div></div>
     <div><div class="lbl">Дата рождения</div><div class="pv">${fmtDate(p.birth)}</div></div>
-    <div><div class="lbl">Возраст</div><div class="pv">${ageTxt}</div></div>
+    <div><div class="lbl">Возраст</div><div class="pv">${age} ${plural(age, "год", "года", "лет")}</div></div>
     <div><div class="lbl">Пол</div><div class="pv">${p.sex}</div></div>
   </div>
   <div class="psections">
@@ -716,96 +306,22 @@ $("profile").innerHTML = `
     <div class="psec"><div class="lbl">Заметки</div>${list(p.notes)}</div>
   </div>`;
 
-/* ---------- что нового: новые события, «просмотрено» хранится в браузере ---------- */
-const EV = (D.events || []).map((e, i) => ({ ...e, i }));
-const LS_KEY = "healthos-last-seen";
-const pad2 = n => String(n).padStart(2, "0");
-const nowIso = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
-const lsGet = () => { try { return localStorage.getItem(LS_KEY); } catch (e) { return undefined; } };
-const lsSet = v => { try { localStorage.setItem(LS_KEY, v); return true; } catch (e) { return false; } };
-let UNSEEN = new Set();   // индексы событий, ещё не просмотренных в этом браузере
-(function initSeen() {
-  let seen = lsGet();
-  if (seen === undefined) {                       // хранилище недоступно: новым считаем последние 3 дня
-    const lim = new Date(Date.now() - 3 * DAY), l = `${lim.getFullYear()}-${pad2(lim.getMonth() + 1)}-${pad2(lim.getDate())}T${pad2(lim.getHours())}:${pad2(lim.getMinutes())}:00`;
-    seen = l;
-  } else if (seen === null) {                     // первый визит: стартовый импорт новым не считаем
-    const imp = EV.filter(e => e.kind === "import").map(e => e.added).sort().pop();
-    seen = imp || nowIso(); lsSet(seen);
-  }
-  EV.forEach(e => { if (e.added > seen) UNSEEN.add(e.i); });
-})();
-const unseenEvents = () => EV.filter(e => UNSEEN.has(e.i));
-function isNewPoint(key, date) { return date && unseenEvents().some(e => e.date === date && (e.markers || []).includes(key)); }
-const anEvents = EV.filter(e => e.kind === "analysis" && (e.markers || []).some(k => bmByKey(k))).sort((a, b) => b.added.localeCompare(a.added));
-const unseenAn = anEvents.filter(e => UNSEEN.has(e.i));
-const LATEST = (unseenAn.length ? unseenAn : anEvents.slice(0, 1)).slice(0, 3);   // блоки «последний анализ» в начале «Анализов»
-(function lastLabLine() {
-  const e = anEvents[0];
-  if (!e || (new Date(todayIso) - new Date(e.added.slice(0, 10))) / DAY > 7) return;
-  const items = e.markers.filter(bmByKey).map(k => {
-    const b = bmByKey(k), pt = b.series.find(x => x.date === e.date) || b.series[b.series.length - 1];
-    return { b, pt };
-  });
-  const bad = items.filter(x => x.pt.flag !== "ok");
-  $("lastLab").innerHTML = `<a class="lastlab" href="#analyses" data-focus="top:${items[0].b.key}">Последний анализ ${fmtDate(e.date).replace(/ \d{4}$/, "")}: ` +
-    items.map(x => `<span class="${x.pt.flag === "ok" ? "ok" : "bad"}">${x.b.name} ${x.pt.value}</span>`).join(", ") +
-    ` — ${bad.length ? "вне нормы: " + bad.map(x => x.b.name).join(", ") : "всё в норме"} <span class="go">→ открыть</span></a>`;
-})();
-const KIND_IC = { import: "📥", analysis: "🧪", visit: "🩺" };
-function addedText(iso) {
-  const [d, t] = iso.split("T"), tm = (t || "").slice(0, 5), td = todayIso;
-  const y = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1), yIso = `${y.getFullYear()}-${pad2(y.getMonth() + 1)}-${pad2(y.getDate())}`;
-  if (d === td) return `сегодня в ${tm}`;
-  if (d === yIso) return `вчера в ${tm}`;
-  const [yy, m, dd] = d.split("-").map(Number);
-  return `${dd} ${MONTHS[m - 1]}${yy !== today.getFullYear() ? " " + yy : ""}`;
-}
-$("feed").innerHTML = EV.length ? [...EV].sort((a, b) => b.added.localeCompare(a.added)).map(e => `
-  <div class="card evcard k-${e.kind}" data-ev="${e.i}">
-    <div class="evhead"><span class="evic">${KIND_IC[e.kind] || "📄"}</span>
-      <div><div class="evt">${e.title}<span class="newpill">новое</span></div>
-      <div class="evm">добавлено ${addedText(e.added)} · дата документа: ${fmtDate(e.date)}</div></div></div>
-    ${e.lines && e.lines.length ? `<ul>${e.lines.map(l => `<li>${l}</li>`).join("")}</ul>` : ""}
-    ${(e.markers || []).filter(bmByKey).length ? `<div class="chips">${e.markers.filter(bmByKey).map(k => `<a class="chip" href="#analyses" data-focus="${e.kind === "analysis" ? "top:" : ""}${k}">${bmByKey(k).name}</a>`).join("")}</div>` : ""}
-  </div>`).join("") : `<div class="empty">Пока ничего нового.</div>`;
-
-// подсветка «нового» везде; вызывается при каждой смене экрана
-function paint() {
-  const evs = unseenEvents(), n = evs.length;
-  const touched = new Set(evs.flatMap(e => e.markers || []));
-  document.querySelectorAll(".evcard").forEach(c => c.classList.toggle("isnew", UNSEEN.has(+c.dataset.ev)));
-  document.querySelectorAll(".bcard").forEach(c => c.classList.toggle("isnew", touched.has(c.dataset.key)));
-  document.querySelectorAll(".latblk").forEach(c => c.classList.toggle("isnew", UNSEEN.has(+c.dataset.ev)));
-  document.querySelectorAll(".visit").forEach(c => c.classList.toggle("isnew", evs.some(e => e.kind === "visit" && e.date === c.dataset.vdate)));
-  const badge = $("newBadge"); if (badge) { badge.textContent = n; badge.hidden = !n; }
-  const bn = $("newBanner");
-  bn.hidden = !n;
-  if (n) bn.textContent = `🆕 Добавлено ${n} ${plural(n, "новый документ", "новых документа", "новых документов")} — посмотреть →`;
-  Object.values(Chart.instances || {}).forEach(ch => ch.update("none"));
-}
-
-/* ---------- навигация по хэшу ---------- */
+/* ---------- навигация по хэшу (#overview, #analyses, ...) ---------- */
+// init — функция, которая рисует вкладку при первом открытии
 const NAV = [
   { id: "overview", ic: "🏠", t: "Обзор" },
-  { id: "new", ic: "🆕", t: "Что нового", hide: !EV.length, newBadge: true },
-  { id: "analyses", ic: "🩸", t: "Анализы", b: D.biomarkers.length, bc: "grey", init: renderLabs },
+  { id: "analyses", ic: "🩸", t: "Анализы", b: D.biomarkers.length, init: renderLabs },
   { id: "sleep", ic: "⌚", t: "Сон и пульс", hide: !G, init: renderSleep },
-  { id: "visits", ic: "🩺", t: "Визиты к врачам", b: D.visits.length || null, bc: "grey" },
-  { id: "reminders", ic: "📅", t: "Напоминания", b: remAttention.length || null, bc: remOverdueCnt ? "red" : "amber" },
+  { id: "visits", ic: "🩺", t: "Визиты к врачам", b: D.visits.length || null },
   { id: "profile", ic: "👤", t: "Профиль" },
 ].filter(n => !n.hide);
 $("nav").innerHTML = `<div class="navgrp"><div class="gt">Карта здоровья</div>` + NAV.map(n =>
   `<a class="navitem" href="#${n.id}" data-id="${n.id}"><span class="ni-ic">${n.ic}</span><span class="ni-tx">${n.t}</span>` +
-  (n.newBadge ? `<span class="ni-b yellow" id="newBadge" hidden></span>` : n.b ? `<span class="ni-b ${n.bc}">${n.b}</span>` : "") + `</a>`).join("") + `</div>`;
+  (n.b ? `<span class="ni-b">${n.b}</span>` : "") + `</a>`).join("") + `</div>`;
 const inited = {};
-let prevId = null;
 function route() {
   let id = location.hash.replace("#", "");
   if (!NAV.some(n => n.id === id)) id = "overview";
-  if (prevId === "new" && id !== "new") UNSEEN = new Set();   // вышли из «Что нового» — просмотрено, подсветку снимаем
-  if (id === "new" && UNSEEN.size) lsSet(nowIso());              // открыли — запоминаем момент просмотра, жёлтое остаётся до выхода
-  prevId = id;
   document.querySelectorAll(".module").forEach(m => m.classList.toggle("active", m.id === "m-" + id));
   document.querySelectorAll(".navitem").forEach(a => {
     const on = a.dataset.id === id;
@@ -813,15 +329,9 @@ function route() {
     if (on && window.innerWidth < 760) a.scrollIntoView({ inline: "center", block: "nearest" });
   });
   const n = NAV.find(x => x.id === id);
-  if (n.init && !inited[id]) { inited[id] = true; n.init(); }   // графики рисуем, когда вкладка видна
-  paint();
+  if (n.init && !inited[id]) { inited[id] = true; n.init(); }
   document.title = `${n.t} · Health OS`;
   window.scrollTo(0, 0);
-  if (focusKey) {
-    const fk = focusKey; focusKey = null;
-    const el = fk.startsWith("top:") ? (document.querySelector(`.latblk .bcard[data-key="${fk.slice(4)}"]`) || document.getElementById("bm-" + fk.slice(4))) : document.getElementById("bm-" + fk);
-    if (el) setTimeout(() => { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }, 60);
-  }
 }
 window.addEventListener("hashchange", route);
 route();
