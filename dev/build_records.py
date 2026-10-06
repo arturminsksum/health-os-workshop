@@ -123,6 +123,11 @@ def main():
         ],
         "biomarkers": biomarkers,
         "visits": visits,
+        "events": [{"added": "2026-09-01T10:00:00", "kind": "import", "date": "2026-09-01",
+                    "title": "Загружена медкарта", "markers": [], "source": "medcard/",
+                    "lines": [f"{sum(len(s) for s in series.values())} значений из 7 анализов за 2020–2025",
+                              "Заключение кардиолога от 2023-03-20",
+                              "Данные часов за 90 дней"]}],
         "reminders": [
             {"id": "lipids-2026", "what": "Липидограмма", "why": "Контроль LDL раз в год по рекомендации кардиолога",
              "due": "2026-09-15", "status": "planned", "markers": ["ldl", "tc", "hdl", "tg"]},

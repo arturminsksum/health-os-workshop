@@ -8,7 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import config
@@ -92,6 +92,13 @@ def _store_originals(paths, folder: Path, stem: str):
     return stored
 
 
+def _event(record, kind, doc_date, title, lines, markers, source):
+    """Лента «Что нового»: когда и что добавилось — страница подсвечивает это, пока не посмотрели."""
+    record.setdefault("events", []).append({
+        "added": datetime.now().isoformat(timespec="seconds"), "kind": kind, "date": doc_date,
+        "title": title, "lines": [x.lstrip("• ") for x in lines], "markers": markers, "source": source})
+
+
 def _add_analysis(record, doc, paths):
     stem = _safe(f"{doc['date']} анализ, {doc['source_name']}")
     stored = _store_originals(paths, config.MEDCARD / doc["date"][:4], stem)
@@ -130,6 +137,7 @@ def _add_analysis(record, doc, paths):
         if r.get("status") == "planned" and set(r.get("markers", [])) & keys:
             r["status"] = "done"
             closed.append(r["what"])
+    _event(record, "analysis", doc["date"], f"Анализ, {doc['source_name']}", lines, sorted(keys), src)
     head = f"Добавил анализ от {doc['date']} ({doc['source_name']}):"
     tail = f"\nЗакрыл напоминание: {', '.join(closed)}." if closed else ""
     return head + "\n" + "\n".join(lines) + tail
@@ -155,6 +163,8 @@ def _add_visit(record, doc, paths):
           f"{', '.join(p.name for p in stored)}\n\n**Жалобы:** {v['complaints']}\n\n**Осмотр:** {v['findings']}\n\n"
           f"**Диагноз:** {v['diagnosis']}\n\n**Рекомендации:**\n\n{recs}\n")
     (stored[0].parent / f"{stem}.md").write_text(md, encoding="utf-8")
+    _event(record, "visit", doc["date"], f"Визит: {v['specialty']} {v['doctor'].rstrip('.')}".strip(),
+           [f"• Диагноз: {v['diagnosis']}"] + added, [k for r in doc["reminders"] for k in r["markers"]], src)
     text = f"Добавил визит от {doc['date']}: {v['specialty']} {v['doctor'].rstrip('.')}.\nДиагноз: {v['diagnosis']}"
     if added:
         text += "\nНовые напоминания:\n" + "\n".join(added)
