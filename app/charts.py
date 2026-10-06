@@ -39,15 +39,20 @@ def _panel(b):
            font=f, fill=COLOR[last["flag"]])
     xs, ys = [_t(p["date"]) for p in s], [p["value"] for p in s]
     lo, hi = b.get("low"), b.get("high")
-    y_min = min(ys + [v for v in (lo, hi) if v is not None])
-    y_max = max(ys + [v for v in (lo, hi) if v is not None])
+    # ось по значениям; граница нормы — только если рядом (ферритин 18–74 при норме до 400 не сплющиваем)
+    near = max(max(ys) - min(ys), abs(max(ys)) * 0.1)
+    bounds = [v for v in (lo, hi) if v is not None and min(ys) - near <= v <= max(ys) + near]
+    y_min, y_max = min(ys + bounds), max(ys + bounds)
+    if y_max - y_min < abs(y_max) * 0.2:  # близкие значения (148 и 151) не растягиваем в обвал
+        mid, half = (y_max + y_min) / 2, abs(y_max) * 0.1
+        y_min, y_max = mid - half, mid + half
     span = (y_max - y_min) or 1
     y_min, y_max = y_min - span * 0.15, y_max + span * 0.15
     x_min, x_max = (min(xs) - 0.3, max(xs) + 0.3) if len(xs) > 1 else (xs[0] - 1, xs[0] + 1)
     px = lambda x: PAD_L + (x - x_min) / (x_max - x_min) * (W - PAD_L - PAD_R)
     py = lambda y: H - PAD_B - (y - y_min) / (y_max - y_min) * (H - PAD_T - PAD_B)
-    band_lo = lo if lo is not None else y_min
-    band_hi = hi if hi is not None else y_max
+    band_lo = max(lo, y_min) if lo is not None else y_min  # полоса нормы обрезается краями графика
+    band_hi = min(hi, y_max) if hi is not None else y_max
     g.rectangle([PAD_L, py(band_hi), W - PAD_R, py(band_lo)], fill=(226, 244, 232))
     for i in range(5):  # сетка и подписи значений
         v = y_min + (y_max - y_min) * i / 4

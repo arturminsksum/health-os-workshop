@@ -299,9 +299,16 @@ function drawChart(canvas, b) {
   const pts = b.series.map(s => ({ x: fracYear(s.date), y: s.value, date: s.date, lab: s.lab }));
   const xs = pts.map(q => q.x);
   const minX = Math.floor(Math.min(...xs)), maxX = Math.max(Math.ceil(Math.max(...xs)), minX + 1);
-  // ось Y должна вмещать и значения, и границы нормы — с запасом
-  const ys = pts.map(q => q.y).concat([b.low, b.high].filter(v => v != null));
-  const lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo || hi || 1) * 0.15;
+  // ось Y строится по значениям; граница нормы попадает на ось, только если она рядом с ними
+  // (ферритин 18–74 при норме до 400 не должен сплющиваться в линию)
+  const vals = pts.map(q => q.y);
+  const vMin = Math.min(...vals), vMax = Math.max(...vals);
+  const near = Math.max(vMax - vMin, Math.abs(vMax) * 0.1);
+  const ys = vals.concat([b.low, b.high].filter(v => v != null && v >= vMin - near && v <= vMax + near));
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  const minSpan = Math.abs(hi) * 0.2;  // 148 и 151 не должны выглядеть обвалом
+  if (hi - lo < minSpan) { const mid = (hi + lo) / 2; lo = mid - minSpan / 2; hi = mid + minSpan / 2; }
+  const pad = (hi - lo || hi || 1) * 0.15;
   new Chart(canvas, {
     type: "line",
     data: { datasets: [{
