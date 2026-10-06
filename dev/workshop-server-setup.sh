@@ -62,7 +62,7 @@ for n in $(seq 1 "$USERS"); do
   sudo -u "$u" bash -c "cd ~ && rm -rf health-os && git clone -q $REPO health-os"
   cat > "/home/$u/health-os/.env" <<ENV
 OPENAI_API_KEY=$OPENAI_API_KEY
-OPENAI_MODEL=gpt-5.4-mini
+OPENAI_MODEL=gpt-6-luna
 TELEGRAM_BOT_TOKEN=
 WEB_PORT=$port
 WEB_PASSWORD=$pw

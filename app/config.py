@@ -23,7 +23,7 @@ def _load_env():
 
 _load_env()
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4-mini")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-6-luna")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 WEB_PORT = int(os.environ.get("WEB_PORT", "8080"))
 WEB_PASSWORD = os.environ.get("WEB_PASSWORD", "")
