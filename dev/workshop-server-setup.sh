@@ -32,6 +32,22 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 UNIT
+# бот участника — тоже служба: включается, когда в .env вписан токен (systemctl enable --now healthos-bot@userN)
+cat > /etc/systemd/system/healthos-bot@.service <<'UNIT'
+[Unit]
+Description=Health OS bot for %i
+After=network-online.target
+[Service]
+User=%i
+WorkingDirectory=/home/%i/health-os
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 run.py bot
+Restart=always
+StandardOutput=append:/home/%i/health-os/bot.log
+StandardError=append:/home/%i/health-os/bot.log
+[Install]
+WantedBy=multi-user.target
+UNIT
 systemctl daemon-reload
 
 : > /root/workshop-cards.txt
