@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl * 2.31.18.229:8700*)",
+      "Bash(curl.exe * 2.31.18.229:8700*)",
+      "Bash(tar -czf ../health-os.tar.gz *)",
+      "Bash(tar.exe -czf ../health-os.tar.gz *)",
+      "Bash(cp -R steps/*)",
+      "WebFetch(domain:2.31.18.229)"
+    ]
+  }
+}
