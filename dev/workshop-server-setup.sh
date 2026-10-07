@@ -11,7 +11,7 @@ IP="$(curl -s -4 ifconfig.me)"
 export DEBIAN_FRONTEND=noninteractive
 timedatectl set-timezone Europe/Warsaw  # время в ленте «Что нового» и напоминаниях — местное
 apt-get update -q
-apt-get install -y -q git python3-pil nodejs npm nano >/dev/null
+apt-get install -y -q git python3-pil python3-pydicom python3-numpy nodejs npm nano >/dev/null  # pydicom — для шага 9 (снимки КТ)
 npm install -g -s @anthropic-ai/claude-code @openai/codex >/dev/null
 
 # вход по паролю (в облачном образе Ubuntu выключен)
