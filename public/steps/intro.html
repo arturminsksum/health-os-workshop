@@ -1,0 +1,182 @@
+<title>Health OS: от моей к вашей</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600&display=swap">
+<style>
+/* Слайд 16:9 под экран ноутбука/ТВ: холст 1600×900 масштабируется целиком. Три состояния по клику. */
+:root {
+  --bg: #0f1a17;
+  --panel: #16241f;
+  --line: #2a3d36;
+  --fg: #e9f2ee;
+  --muted: #8fa89e;
+  --keep: #4ade80;
+  --cut: #f87171;
+  --doc: #fbbf24;
+  --accent: #5eead4;
+  --display: "Unbounded", "Arial Black", sans-serif;
+  --body: "Onest", "Segoe UI", Arial, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); margin: 0; overflow: hidden; cursor: pointer; user-select: none; }
+.viewport { position: fixed; inset: 0; overflow: hidden; }
+.frame { position: absolute; left: 50%; top: 50%; width: 1600px; height: 900px; box-sizing: border-box; padding: 44px 60px 30px; display: flex; flex-direction: column; gap: 26px; transform-origin: center center; }
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 54px; margin: 0; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: 22px; margin-top: 10px; }
+.legend { display: flex; gap: 26px; font-size: 18px; color: var(--muted); white-space: nowrap; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
+/* состояния 1 и 2 */
+.groups { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: min-content; gap: 22px; align-content: start; }
+.group { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; }
+.group h2 { font-family: var(--display); font-weight: 500; font-size: 17px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 4px; }
+.f { position: relative; font-size: 22px; line-height: 1.3; padding-left: 30px; transition: color .5s, opacity .6s; }
+.f::before { content: "•"; position: absolute; left: 6px; color: var(--muted); transition: color .4s; }
+.f .alt { display: none; }
+.f .tag { display: none; font-size: 15px; margin-left: 8px; padding: 2px 9px; border-radius: 99px; vertical-align: 3px; white-space: nowrap; }
+.f s { text-decoration: none; background: linear-gradient(var(--cut), var(--cut)) no-repeat 0 55% / 0 2px; transition: background-size .7s ease .15s; }
+body[data-step="2"] .f.keep::before, body[data-step="2"] .f.alt-keep::before { content: "✓"; color: var(--keep); }
+body[data-step="2"] .f.cut { color: var(--muted); opacity: .55; }
+body[data-step="2"] .f.cut s { background-size: 100% 2px; }
+body[data-step="2"] .f.doc { color: var(--fg); }
+body[data-step="2"] .f.cut::before { content: "✕"; color: var(--cut); }
+body[data-step="2"] .f.doc::before { content: "✎"; color: var(--doc); }
+body[data-step="2"] .f.doc .tag { display: inline-block; background: color-mix(in srgb, var(--doc) 18%, transparent); color: var(--doc); }
+body[data-step="2"] .f.alt-keep .orig { display: none; }
+body[data-step="2"] .f.alt-keep .alt { display: inline; color: var(--keep); }
+
+/* состояние 3 */
+.plan { display: none; flex: 1; min-height: 0; grid-template-columns: 1fr 1.9fr; gap: 30px; }
+body[data-step="3"] .groups, body[data-step="3"] .legend { display: none; }
+body[data-step="3"] .plan { display: grid; animation: rise .6s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.start { background: var(--panel); border: 1px solid var(--keep); border-radius: 12px; padding: 26px 28px; display: flex; flex-direction: column; gap: 16px; align-self: start; }
+.start h2, .steps h2 { font-family: var(--display); font-weight: 500; font-size: 19px; letter-spacing: .08em; text-transform: uppercase; color: var(--keep); margin: 0 0 4px; }
+.start .f::before { content: "✓"; color: var(--keep); }
+.steps { display: flex; flex-direction: column; gap: 8px; }
+.steps h2 { color: var(--accent); }
+.step { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 18px; font-size: 22px; }
+.step b { font-family: var(--display); font-weight: 700; color: var(--accent); font-size: 24px; text-align: center; }
+.step em { font-style: normal; font-size: 16px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px; white-space: nowrap; }
+.step.bot b { color: var(--doc); }
+.finale { border-color: var(--keep); }
+.finale b { color: var(--keep); }
+body[data-step="3"] .step { animation: rise .5s ease both; }
+.steps .step:nth-child(3) { animation-delay: .05s } .steps .step:nth-child(4) { animation-delay: .1s }
+.steps .step:nth-child(5) { animation-delay: .15s } .steps .step:nth-child(6) { animation-delay: .2s }
+.steps .step:nth-child(7) { animation-delay: .25s } .steps .step:nth-child(8) { animation-delay: .3s }
+.steps .step:nth-child(9) { animation-delay: .35s } .steps .step:nth-child(10) { animation-delay: .4s }
+
+footer { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 16px; }
+.dots { display: flex; gap: 10px; }
+.dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); display: inline-block; transition: background .3s; }
+.dots i.on { background: var(--accent); }
+.t2, .t3 { display: none; }
+body[data-step="2"] .t1, body[data-step="3"] .t1 { display: none; }
+body[data-step="2"] .t2, body[data-step="3"] .t3 { display: block; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="viewport"><div class="frame" id="frame">
+  <header>
+    <div>
+      <h1 class="t1">Моя Health OS</h1>
+      <h1 class="t2">Что будет у вас сегодня</h1>
+      <h1 class="t3">С чего начинаем и куда идём</h1>
+      <div class="sub t1">Личная система здоровья, которой я пользуюсь каждый день</div>
+      <div class="sub t2">За час — на учебном пациенте</div>
+      <div class="sub t3">Каждый идёт в своём темпе. Не вышло — берёте готовое решение шага</div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--keep)"></i>сегодня у вас</span>
+      <span><i style="background:var(--cut)"></i>остаётся у меня</span>
+      <span><i style="background:var(--doc)"></i>делаете сами по документу</span>
+    </div>
+  </header>
+
+  <section class="groups">
+    <div class="group"><h2>Медкарта</h2>
+      <div class="f alt-keep"><span class="orig">Собирает все мои анализы и заключения врачей</span><span class="alt">Учебный пациент: анализы на трёх языках</span></div>
+      <div class="f keep">Превращает бумажку от врача в напоминание</div>
+      <div class="f cut"><s>Забирает анализы из почты</s></div>
+      <div class="f keep">Личные данные защищены</div>
+      <div class="f keep">Приводит анализы разных лабораторий к одним единицам</div>
+    </div>
+    <div class="group"><h2>Веб-страница</h2>
+      <div class="f keep">Показывает графики с нормой</div>
+      <div class="f keep">Разворачивает строку в график по клику</div>
+      <div class="f keep">Показывает, что и когда пересдать</div>
+      <div class="f keep">Показывает кадры КТ и МРТ с дисков</div>
+    </div>
+    <div class="group"><h2>Бот в Telegram</h2>
+      <div class="f keep">Показывает любые мои анализы и их динамику</div>
+      <div class="f keep">Отвечает на любой вопрос по моим медданным — даже на приёме у врача</div>
+      <div class="f keep">Принимает фото и PDF анализов</div>
+      <div class="f keep">Сам напоминает о пересдаче</div>
+    </div>
+    <div class="group"><h2>Часы Garmin</h2>
+      <div class="f alt-keep"><span class="orig">Каждый день забирает данные с часов</span><span class="alt">Показывает сон и пульс на учебных данных</span></div>
+      <div class="f doc"><s>Каждое утро пишет в бот, можно ли тренироваться</s><span class="tag">по документу</span></div>
+      <div class="f cut"><s>По воскресеньям присылает разбор недели</s></div>
+    </div>
+    <div class="group"><h2>Наука</h2>
+      <div class="f doc"><s>Ищет исследования под мой вопрос</s><span class="tag">по документу</span></div>
+      <div class="f doc"><s>Проверяет цифры в отчёте второй моделью</s><span class="tag">по документу</span></div>
+      <div class="f cut"><s>Сообщает о новых исследованиях</s></div>
+    </div>
+  </section>
+
+  <section class="plan">
+    <div class="start"><h2>Старт — уже у вас</h2>
+      <div class="f">Медкарта учебного пациента уже собрана</div>
+      <div class="f">Веб-страница показывает анализы таблицами</div>
+      <div class="f">Агент добавляет новый анализ одной фразой</div>
+    </div>
+    <div class="steps"><h2>Шаги урока</h2>
+      <div class="step"><b>1</b><span>Строим графики анализов с нормой</span><em>все</em></div>
+      <div class="step"><b>2</b><span>Разворачиваем строку в график по клику</span><em>все</em></div>
+      <div class="step"><b>3</b><span>Собираем напоминания из рекомендаций врачей</span><em>страница</em></div>
+      <div class="step"><b>4</b><span>Подсвечиваем новые анализы</span><em>страница</em></div>
+      <div class="step"><b>5</b><span>Строим тренды сна и пульса</span><em>страница</em></div>
+      <div class="step bot"><b>6</b><span>Учим бота отвечать на вопросы</span><em>бот</em></div>
+      <div class="step bot"><b>7</b><span>Учим бота принимать фото и PDF</span><em>бот</em></div>
+      <div class="step bot"><b>8</b><span>Добавляем кнопки и утренние напоминания</span><em>бот</em></div>
+      <div class="step"><b>9</b><span>Показываем кадры КТ и МРТ с диска клиники</span><em>для быстрых</em></div>
+      <div class="step finale"><b>★</b><span>Забираете итоговую версию со всеми шагами</span><em>финал</em></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>клик или → — дальше, ← — назад</span>
+    <span class="dots"><i class="on"></i><i></i><i></i></span>
+  </footer>
+</div></div>
+
+<script>
+const frame = document.getElementById("frame");
+function fit() {
+  const s = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+  frame.style.transform = `translate(-50%, -50%) scale(${s})`;
+}
+window.addEventListener("resize", fit);
+fit();
+
+let step = 1;
+const dots = document.querySelectorAll(".dots i");
+function show(n) {
+  step = Math.max(1, Math.min(3, n));
+  document.body.dataset.step = step;
+  dots.forEach((d, i) => d.classList.toggle("on", i === step - 1));
+}
+const embedded = window.self !== window.top;  // внутри презентации листает она сама, через #1…#3
+if (embedded) document.querySelector("footer span").style.visibility = "hidden";
+window.addEventListener("hashchange", () => show(+location.hash.slice(1) || 1));
+if (!embedded) document.addEventListener("click", () => show(step + 1));
+if (!embedded) document.addEventListener("keydown", e => {
+  if (["ArrowRight", " ", "PageDown", "Enter"].includes(e.key)) { e.preventDefault(); show(step + 1); }
+  if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); show(step - 1); }
+});
+show(+location.hash.slice(1) || 1);
+</script>
