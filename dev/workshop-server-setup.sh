@@ -54,8 +54,7 @@ systemctl daemon-reload
 for n in $(seq 1 "$USERS"); do
   u="user$n"
   port=$((8600 + n))
-  # пароль легко продиктовать: слово + две цифры (pulse47, vitamin23)
-  pw="$(python3 -c 'import secrets;w=["pulse","vitamin","heart","sleep","iron","sugar","lipid","doctor","health","energy","tonus","oxygen"];print(secrets.choice(w)+str(secrets.randbelow(90)+10))')"
+  pw="os$port"  # учебные данные — пароль по порту: os8601, os8602…
   id "$u" >/dev/null 2>&1 || useradd -m -s /bin/bash "$u"
   echo "$u:$pw" | chpasswd
   chmod 700 "/home/$u"
