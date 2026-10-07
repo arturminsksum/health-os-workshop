@@ -9,3 +9,5 @@ dashboard/health-dashboard.html
 chart.png
 health-os.log
 bot.log
+.vercel
+.env*

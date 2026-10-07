@@ -22,21 +22,40 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def main() -> None:
+def load_record() -> dict:
+    """Читает свод медкарты (+ данные часов, если есть) — только чтение, без записи."""
     record = json.loads(read(RECORD))
     if GARMIN.exists():
         record["garmin"] = json.loads(read(GARMIN))
+    return record
 
+
+def build_data_js(record: dict) -> str:
     # '</' экранируем, чтобы данные не могли закрыть тег <script> при вставке в html
     payload = json.dumps(record, ensure_ascii=False).replace("</", "<\\/")
-    data_js = f"window.HEALTH_DATA = {payload};\n"
-    (HERE / "data.js").write_text(data_js, encoding="utf-8")
+    return f"window.HEALTH_DATA = {payload};\n"
+
+
+def render_html() -> str:
+    """Собирает самодостаточный HTML страницы в памяти (без записи файлов)."""
+    record = load_record()
+    data_js = build_data_js(record)
 
     html = read(HERE / "index.html")
     chart_js = read(HERE / "chart.umd.min.js").replace("</script", "<\\/script")
     html = html.replace('<script src="chart.umd.min.js"></script>', f"<script>{chart_js}</script>")
     html = html.replace('<script src="data.js"></script>', f"<script>{data_js}</script>")
     assert 'src="' not in html.split("<style>")[0], "остались внешние скрипты"
+    return html
+
+
+def main() -> None:
+    record = load_record()
+
+    data_js = build_data_js(record)
+    (HERE / "data.js").write_text(data_js, encoding="utf-8")
+
+    html = render_html()
     out = HERE / "health-dashboard.html"
     out.write_text(html, encoding="utf-8")
 
