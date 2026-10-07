@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Запуск Health OS.
+
+  python3 run.py                    — страница медкарты + Telegram-бот (обычный режим)
+  python3 run.py web                — только страница
+  python3 run.py bot                — только бот
+  python3 run.py check              — проверить настройки: ключ, бот, порт
+  python3 run.py ask "вопрос"       — спросить по медкарте без Telegram
+  python3 run.py add файл [файл…]   — добавить анализ или заключение без Telegram
+  python3 run.py ct <папка>         — достать кадры КТ/МРТ из копии диска клиники (DICOM) и показать на странице
+  python3 run.py step N             — поставить готовое решение шага N (данные не трогает)
+"""
+import sys
+import threading
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "app"))
+
+import config  # noqa: E402
+
+
+def check():
+    import json
+    import urllib.request
+    ok = True
+    print(f"Python {sys.version.split()[0]}", "— ок" if sys.version_info >= (3, 10) else "— нужен 3.10 или новее")
+    if config.OPENAI_API_KEY:
+        try:
+            req = urllib.request.Request("https://api.openai.com/v1/models",
+                                         headers={"Authorization": f"Bearer {config.OPENAI_API_KEY}"})
+            urllib.request.urlopen(req, timeout=20).read()
+            print("Ключ OpenAI — работает")
+        except Exception as e:
+            ok = False
+            print("Ключ OpenAI — НЕ работает:", e)
+    else:
+        ok = False
+        print("Ключ OpenAI — не вписан в .env (OPENAI_API_KEY)")
+    if config.TELEGRAM_BOT_TOKEN:
+        try:
+            url = f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/getMe"
+            me = json.load(urllib.request.urlopen(url, timeout=20))["result"]
+            print(f"Бот @{me['username']} — работает")
+        except Exception as e:
+            ok = False
+            print("Токен бота — НЕ работает:", e)
+    else:
+        print("Токен бота — не вписан (TELEGRAM_BOT_TOKEN); страница будет работать и без бота")
+    print(f"Страница — порт {config.WEB_PORT}, пароль {'задан' if config.WEB_PASSWORD else 'НЕ задан (WEB_PASSWORD)'}")
+    print("Всё готово, запускай: python3 run.py" if ok else "Поправь пункты выше и запусти проверку ещё раз")
+
+
+def step(n):
+    """Готовое решение шага: копирует файлы из steps/NN-*/solution/ поверх проекта и пересобирает страницу."""
+    import shutil
+    root = Path(__file__).resolve().parent
+    found = sorted(root.glob(f"steps/{int(n):02d}-*/solution"))
+    if not found:
+        return print(f"Готового решения шага {n} нет. Есть шаги: "
+                     + ", ".join(p.parent.name for p in sorted(root.glob("steps/*/solution"))))
+    src = found[0]
+    for f in src.rglob("*"):
+        if f.is_file():
+            dst = root / f.relative_to(src)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(f, dst)
+            print("  обновлён:", dst.relative_to(root))
+    import medcard
+    medcard.rebuild_page()
+    print(f"Готовое решение шага {n} поставлено. Обнови страницу в браузере.")
+
+
+def main():
+    args = sys.argv[1:]
+    if args[:1] == ["step"] and len(args) > 1:
+        return step(args[1])
+    if args[:1] == ["check"]:
+        return check()
+    if args[:1] == ["ask"] and not (Path(__file__).resolve().parent / "app" / "ask.py").exists():
+        return print("Вопросы по медкарте появятся вместе с ботом на одном из шагов урока.")
+    if args[:1] == ["ask"]:
+        import ask
+        res = ask.answer(" ".join(args[1:]))
+        print(res["text"])
+        if res["charts"]:
+            import charts
+            out = Path("chart.png")
+            out.write_bytes(charts.render(res["charts"]))
+            print(f"График: {out.resolve()}")
+        return
+    if args[:1] == ["ct"]:
+        if len(args) < 2:
+            return print("Укажи папку с копией диска: python3 run.py ct <папка>")
+        import ct
+        return ct.run(" ".join(args[1:]))
+    if args[:1] == ["add"]:
+        import medcard
+        return print(medcard.ingest(args[1:]))
+    import medcard
+    medcard.rebuild_page()
+    if args[:1] == ["web"]:  # только страница (на общем сервере она запущена всегда)
+        import web
+        return web.serve()
+    import web
+    try:
+        import bot  # бота в стартовой версии нет — он появляется на одном из шагов урока
+    except ImportError:
+        print("Бота пока нет — работает только страница.")
+        return web.serve()
+    if args[:1] == ["bot"]:  # только бот
+        return bot.run()
+    threading.Thread(target=web.serve, daemon=True).start()
+    bot.run()
+    if not config.TELEGRAM_BOT_TOKEN:  # без бота держим работающей хотя бы страницу
+        threading.Event().wait()
+
+
+if __name__ == "__main__":
+    main()
