@@ -86,7 +86,8 @@ def deploy(user, blob):
         if name == ".env":
             token = token_of(data.decode("utf-8", "ignore"))
             continue
-        if name in KEEP_FILES or name.startswith(KEEP) or "/__pycache__/" in name or name.endswith(".pyc"):
+        if (name in KEEP_FILES or name.startswith(KEEP) or "/__pycache__/" in name or name.endswith(".pyc")
+                or name.rsplit("/", 1)[-1].startswith("._") or name.endswith(".DS_Store")):  # служебное macOS
             continue
         dst = root / name
         dst.parent.mkdir(parents=True, exist_ok=True)
